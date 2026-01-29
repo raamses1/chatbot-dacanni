@@ -9,6 +9,16 @@ use Illuminate\Http\Request;
 
 class ChatbotController extends Controller
 {
+    protected $products = [
+        'blusa',
+        'guayabera',
+        'vestido',
+        'alebrije',
+        'top',
+        'corset',
+        'pantalon'
+    ]; 
+
     public function handle(Request $request)
     {
         $rawMessage = $request->input('message');
@@ -49,6 +59,15 @@ class ChatbotController extends Controller
 
         $words = explode(' ', $message);
 
+        $detectedProduct = null;
+
+        foreach($this->products as $product){
+            if(in_array($product, $words)){
+                $detectedProduct = $product;
+                break;
+            }
+        }
+
         $scores = [];
 
         foreach($intents as $intent => $data){
@@ -74,10 +93,36 @@ class ChatbotController extends Controller
                 $bestIntent = $intent;
             }
         }
-        if($maxScore === 0){
-            $reply = 'Lo siento no entendi, formul tu pregunta';
-        }else{
+
+        $userChat->last_intent = $bestIntent;
+
+         if($detectedProduct){
+            $userChat->last_product = $detectedProduct;
+        }
+
+        //topic basico
+        if($bestIntent === 'precio'){
+            $userChat->last_topic = 'producto';
+        }
+
+        if($bestIntent === 'envio'){
+            $userChat->last_topic = 'envio';
+        } 
+
+        $userChat->save();
+
+        if($bestIntent === 'precio' && $userChat->last_product){
+            $reply = 'El precio del'.$userChat->last_product.' es de $5000';
+        }
+        elseif($bestIntent === 'envio' && $userChat->last_product){
+            $reply = 'El envio del'.$userChat->last_product.' tarda de 2 a 4 dias';
+        }
+        elseif($maxScore > 0){
+            //respuesta normal
             $reply = $intents[$bestIntent]['response'];
+        }
+        else{
+            $reply ='Lo siento, no entendi tu pregunta';
         }
         //guardar el chat
         $chat = Chat::create([
@@ -90,11 +135,10 @@ class ChatbotController extends Controller
         return response()->json([
             'reply' => $reply,
             'intent' => $bestIntent,
-            'score' => $score,
+            'score' => $maxScore,
             'chat_id' => $chat->id,
             'session' => $sessionId
         ]);
-    
     }
 
     private function normalizeText($text)
