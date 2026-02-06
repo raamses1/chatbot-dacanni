@@ -5,6 +5,7 @@ use App\Models\UserChat;
 use App\Models\Chat;
 use Illuminate\Support\Facades\Session;
 use App\Services\ChatbotService;
+use App\Services\WooCommerceService;
 
 use Illuminate\Http\Request;
 
@@ -15,6 +16,10 @@ class ChatbotController extends Controller
     public function __construct(ChatbotService $chatbotService)
     {
         $this->chatbotService = $chatbotService;
+    }
+
+    public function testWoo(WooCommerceService $woo){
+        return $woo->getProducts();
     }
 
     public function handle(Request $request)
