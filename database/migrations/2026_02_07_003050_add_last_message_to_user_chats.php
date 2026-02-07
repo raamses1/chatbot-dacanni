@@ -12,7 +12,7 @@ return new class extends Migration
     public function up()
     {
         Schema::table('users_chat', function (Blueprint $table) {
-            $table->string('last_product')->nullable()->after('last_topic');
+            $table->text('last_message')->nullable();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down()
     {
         Schema::table('users_chat', function (Blueprint $table) {
-            $table->dropColumn('last_product');
+            $table->dropColumn('last_message');
         });
     }
 };

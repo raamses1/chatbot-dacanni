@@ -1,9 +1,16 @@
 <?php
 
 namespace App\Services;
+use App\Services\WooCommerceService;
 
 class ChatbotService
 {
+    protected WooCommerceService $woo;
+
+    public function __construct(WooCommerceService $woo){
+        $this->woo = $woo;
+    }
+
      protected array $products = [
         'blusa',
         'guayabera',
@@ -37,11 +44,19 @@ class ChatbotService
     {
         // normalizar texto
         $message = $this->normalizeText($rawMessage);
+        
+        $cleanMessage = $this->removeStopWords($message);
 
-        $words = explode(' ', $message);
+        //guardar el ultimo mensaje
+        $userChat->last_message = $cleanMessage;
+        $userChat->save();
+
+
+        $wordsOriginal = explode(' ', $message);
+        $wordsClean = explode(' ', $cleanMessage);
 
         // detectar producto
-        $detectedProduct = $this->detectProduct($words);
+        $detectedProduct = $this->detectProduct($wordsClean);
 
         if ($detectedProduct) {
             $userChat->last_product = $detectedProduct;
@@ -68,7 +83,7 @@ class ChatbotService
         }
 
         // detectar intent
-        [$intent, $score] = $this->detectIntent($words);
+        [$intent, $score] = $this->detectIntent($wordsOriginal);
 
         $userChat->last_intent = $intent;
         $userChat->save();
@@ -142,11 +157,12 @@ class ChatbotService
         }
         // precio con producto
         if ($intent === 'precio' && $userChat->last_product) {
+            $product = $this->findProductWoo($userChat->last_message ?? $userChat->last_product);
 
-            return 'El precio del ' .
-                $userChat->last_product .
-                ' es de $5000 MXN 💰';
-
+            if(!$product){
+                return 'No logre encontrar el producto';
+            }
+            return 'El precio del ' . $product['name'] .' es $ ' . $product['price'] .'MXN';
         }
 
         // envio con producto
@@ -168,6 +184,15 @@ class ChatbotService
         return 'Lo siento, no entendí tu pregunta 😕';
     }
 
+    //encontrar producto woocomerce
+    private function findProductWoo(string $name){
+        $products = $this->woo->getProducts($name);
+
+        if(empty($products)){
+            return null;
+        }
+        return $this->bestMatch($products, $name); //optimizacion en la busqueda de productos 
+    }
 
     //funcion para normalizar texto
     private function normalizeText(string $text): string
@@ -184,5 +209,46 @@ class ChatbotService
 
         return $text;
     }
+
+    private function bestMatch(array $products, string $search){
+        $search = strtolower($search);
+        $best = null;
+        $bestScore = 0;
+
+        foreach($products as $product){
+
+        if(!isset($product['name'])){
+            continue; 
+        }
+            $name = strtolower($product['name']);
+
+            similar_text($search, $name, $percent);
+
+            if($percent > $bestScore){
+                $bestScore = $percent;
+                $best = $product;
+            }
+        }
+        return $best;
+    }
+
+    private function removeStopWords(string $text): string
+{
+    $stopWords = [
+        'cuanto','cuesta','precio','vale','quiero',
+        'saber','el','la','los','las','de','un','una',
+        'por','favor','me','das'
+    ];
+
+    $words = explode(' ', $text);
+
+    $filtered = array_filter($words, function($word) use ($stopWords){
+        return !in_array($word, $stopWords);
+    });
+
+    return implode(' ', $filtered);
+}
+
+
     }
 

@@ -25,7 +25,7 @@ class WooCommerceService
         $params = [
             'consumer_key' => $this->key,
             'consumer_secret' => $this->secret,
-            'per_page' => 10,
+            'per_page' => 5,
         ];
 
         if ($search) {
