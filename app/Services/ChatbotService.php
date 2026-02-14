@@ -37,6 +37,18 @@ class ChatbotService
             'keywords' => ['precio','cuesta','costo','vale'],
             'response' => '¿De qué producto quieres saber el precio?'
         ],
+        'pago' => [
+            'keywords' => ['pago', 'pagos', 'tarjeta', 'transferencia', 'deposito', 'efectivo', 'cuenta'],
+            'response' => 'Aceptamos tarjeta, transferencia, pago en linea (por la pagina), deposito bancario'
+        ],
+        'horario' => [
+            'keywords' => ['horario', 'horarios', 'abren', 'cierran', 'hora'],
+            'response' => 'Nuestro horario es de lunes a sabado de 9 am a 8 pm, domingo de 10 am a 7pm, con un horario de comida de 3pm a 4 pm'
+        ],
+        'stock' => [
+            'keywords' => ['disponible', 'disponibilidad', 'existencia', 'stock', 'agotado','hay'],
+            'response' => 'Dejame revisar la disponibilidad.'
+        ],
 
     ];
 
@@ -59,9 +71,11 @@ class ChatbotService
         $detectedProduct = $this->detectProduct($wordsClean);
 
         if ($detectedProduct) {
-            $userChat->last_product = $detectedProduct;
+            $userChat->last_product = $cleanMessage;
+            $userChat->conversation_state = null; //limpia estado
             $userChat->save();
         }
+
 
         if($userChat->conversation_state === 'waiting_product_price'){
             if($detectedProduct){
@@ -102,8 +116,10 @@ class ChatbotService
     private function detectProduct(array $words): ?string
     {
         foreach ($this->products as $product) {
-            if (in_array($product, $words)) {
-                return $product;
+            foreach($words as $word){
+                if (str_contains($word, $product)) {
+                    return $product;
+                }
             }
         }
 
@@ -122,8 +138,10 @@ class ChatbotService
 
             foreach ($data['keywords'] as $keyword) {
 
-                if (in_array($keyword, $words)) {
-                    $scores[$intent]++;
+                foreach($words as $word){
+                    if(str_contains($word, $keyword)){
+                        $scores[$intent]++;
+                    }
                 }
 
             }
@@ -174,6 +192,26 @@ class ChatbotService
 
         }
 
+        //detectar stock sin producto
+        if($intent === 'stock' && !$userChat->last_product){
+            return '¿De que producto quieres saber la disponibilidad?';
+        };
+
+        //stock con producto
+        if($intent === 'stock' && $userChat->last_product){
+            $product = $this->findProductWoo($userChat->last_product);
+
+            if (!$product){
+                return 'No encontre ese prodduct';
+            }
+
+            if(isset($product['stock_status']) && $product['stock_status'] === 'instock'){
+                return 'Tenemos disponible el ' . $product['name'];
+            }
+
+            return 'El ' . $product['name'] . ' esta agotado';
+        }
+
         // respuesta normal
         if ($intent && isset($this->intents[$intent])) {
 
@@ -210,27 +248,37 @@ class ChatbotService
         return $text;
     }
 
-    private function bestMatch(array $products, string $search){
-        $search = strtolower($search);
-        $best = null;
-        $bestScore = 0;
+    private function bestMatch(array $products, string $search)
+{
+    $search = strtolower($search);
 
-        foreach($products as $product){
+    $best = null;
+    $bestScore = 0;
 
-        if(!isset($product['name'])){
-            continue; 
+    foreach ($products as $product) {
+
+        if (!isset($product['name'])) {
+            continue;
         }
-            $name = strtolower($product['name']);
 
-            similar_text($search, $name, $percent);
+        $name = strtolower($product['name']);
 
-            if($percent > $bestScore){
-                $bestScore = $percent;
-                $best = $product;
-            }
+        // 🔥 PRIORIDAD 1: si el nombre contiene exactamente la palabra buscada
+        if (str_contains($name, $search)) {
+            return $product;
         }
-        return $best;
+
+        // 🔥 PRIORIDAD 2: similitud
+        similar_text($search, $name, $percent);
+
+        if ($percent > $bestScore) {
+            $bestScore = $percent;
+            $best = $product;
+        }
     }
+
+    return $best;
+}
 
     private function removeStopWords(string $text): string
 {
