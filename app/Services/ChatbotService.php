@@ -71,7 +71,7 @@ class ChatbotService
         $detectedProduct = $this->detectProduct($wordsClean);
 
         if ($detectedProduct) {
-            $userChat->last_product = $cleanMessage;
+            $userChat->last_product = $detectedProduct;
             $userChat->conversation_state = null; //limpia estado
             $userChat->save();
         }
@@ -197,20 +197,62 @@ class ChatbotService
             return '¿De que producto quieres saber la disponibilidad?';
         };
 
-        //stock con producto
-        if($intent === 'stock' && $userChat->last_product){
-            $product = $this->findProductWoo($userChat->last_product);
+        
+        // stock con producto
+if ($intent === 'stock' && $userChat->last_product) {
 
-            if (!$product){
-                return 'No encontre ese prodduct';
+$cleanSearch = $this->cleanSearchText($userChat->last_message);
+
+    $product = $this->findProductWoo($cleanSearch);
+
+    if (!$product) {
+        return 'No encontré ese producto';
+    }
+
+    //peoducto simple
+    if ($product['type'] === 'simple') {
+
+        if ($product['stock_status'] === 'instock') {
+
+            if (isset($product['stock_quantity'])) {
+                return 'Tenemos ' . $product['stock_quantity'] . ' disponibles del ' . $product['name'];
             }
 
-            if(isset($product['stock_status']) && $product['stock_status'] === 'instock'){
-                return 'Tenemos disponible el ' . $product['name'];
-            }
-
-            return 'El ' . $product['name'] . ' esta agotado';
+            return 'El ' . $product['name'] . ' está disponible';
         }
+
+        return 'El ' . $product['name'] . ' está agotado';
+    }
+
+    //producto variable
+    if ($product['type'] === 'variable') {
+
+        $variations = $this->woo->getVariations($product['id']);
+
+        if (!$variations) {
+            return 'No pude verificar las variaciones del producto';
+        }
+
+        $totalStock = 0;
+
+        foreach ($variations as $variation) {
+
+            if ($variation['stock_status'] === 'instock') {
+
+                if (isset($variation['stock_quantity'])) {
+                    $totalStock += (int) $variation['stock_quantity'];
+                }
+            }
+        }
+
+        if ($totalStock > 0) {
+            return 'Tenemos ' . $totalStock . ' disponibles del ' . $product['name'];
+        }
+
+        return 'El ' . $product['name'] . ' está agotado';
+    }
+}
+
 
         // respuesta normal
         if ($intent && isset($this->intents[$intent])) {
@@ -225,6 +267,7 @@ class ChatbotService
     //encontrar producto woocomerce
     private function findProductWoo(string $name){
         $products = $this->woo->getProducts($name);
+        
 
         if(empty($products)){
             return null;
@@ -295,6 +338,39 @@ class ChatbotService
     });
 
     return implode(' ', $filtered);
+}
+
+private function cleanSearchText($text)
+{
+    $stopWords = [
+        'hay',
+        'tienes',
+        'tienen',
+        'disponible',
+        'disponibles',
+        'stock',
+        'existencia',
+        'queda',
+        'quedan',
+        'precio',
+        'cuesta',
+        'vale',
+        'el',
+        'la',
+        'los',
+        'las',
+        'de',
+        'del',
+        '?'
+    ];
+
+    $text = strtolower($text);
+
+    foreach ($stopWords as $word) {
+        $text = str_replace($word, '', $text);
+    }
+
+    return trim(preg_replace('/\s+/', ' ', $text));
 }
 
 
