@@ -201,9 +201,13 @@ class ChatbotService
         // stock con producto
 if ($intent === 'stock' && $userChat->last_product) {
 
-$cleanSearch = $this->cleanSearchText($userChat->last_message);
+$searchProduct = $this->cleanSearchText($userChat->last_message);
 
-    $product = $this->findProductWoo($cleanSearch);
+if(!$searchProduct){
+    $searchProduct = $userChat->last_product;
+}
+
+$product = $this->findProductWoo($searchProduct);
 
     if (!$product) {
         return 'No encontré ese producto';
