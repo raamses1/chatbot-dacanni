@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\UserChat;
 use App\Models\Chat;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Session;
 use App\Services\ChatbotService;
 use App\Services\WooCommerceService;
@@ -33,7 +34,11 @@ class ChatbotController extends Controller
         }
 
         // sesión
-        $sessionId = Session::getId();
+         $sessionId = $request->input('session');
+
+    if (!$sessionId) {
+        $sessionId = Str::random(40);
+    }
         $ip = $request->ip();
 
         $userChat = UserChat::firstOrCreate(
@@ -42,8 +47,8 @@ class ChatbotController extends Controller
         );
 
         // procesar con Service
-        $result = $this->chatbotService->processMessage($rawMessage, $userChat);
-
+        $result = $this->chatbotService->processMessage($rawMessage, $userChat); 
+        
         // guardar chat
         $chat = Chat::create([
             'user_chat_id' => $userChat->id,
