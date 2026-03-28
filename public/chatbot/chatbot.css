@@ -321,3 +321,41 @@
   #dac-chat  { width: calc(100vw - 24px); right: 12px; bottom: 88px; }
   #dac-bubble { right: 14px; bottom: 14px; }
 }
+
+/* ── CALIFICACIÓN ── */
+.dac-rating {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.dac-rating-btn {
+    background: none;
+    border: 1.5px solid var(--dac-gray-2);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.18s;
+    color: var(--dac-text-soft);
+}
+
+.dac-rating-btn:hover:not(:disabled) {
+    border-color: var(--dac-blue);
+    background: var(--dac-gray);
+}
+
+.dac-rating-btn.selected-up {
+    background: #dcfce7;
+    border-color: #16a34a;
+}
+
+.dac-rating-btn.selected-down {
+    background: #fce8f3;
+    border-color: var(--dac-pink);
+}
+
+.dac-rating-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}

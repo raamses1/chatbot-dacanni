@@ -213,6 +213,17 @@
         <p class="metric-value">{{ $fallbackCount }}</p>
         <p class="metric-sub">Preguntas no reconocidas</p>
     </div>
+    <div class="metric-card green">
+    <p class="metric-label">Respuestas 👍</p>
+    <p class="metric-value">{{ $ratingPositive }}</p>
+    <p class="metric-sub">Calificaciones positivas</p>
+</div>
+
+<div class="metric-card pink">
+    <p class="metric-label">Respuestas 👎</p>
+    <p class="metric-value">{{ $ratingNegative }}</p>
+    <p class="metric-sub">Calificaciones negativas</p>
+</div>
 </div>
 
 {{-- INFERIOR --}}

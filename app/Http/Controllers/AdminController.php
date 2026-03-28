@@ -14,6 +14,8 @@ class AdminController extends Controller
         $totalMessages    = Chat::count();
         $todayMessages    = Chat::whereDate('created_at', today())->count();
         $fallbackCount    = Chat::where('intent', 'ai_fallback')->count();
+        $ratingPositive = Chat::where('rating', 1)->count();
+        $ratingNegative = Chat::where('rating', 0)->count();
 
         $intentStats = Chat::whereNotNull('intent')
             ->where('intent', '!=', 'ai_fallback')
@@ -30,7 +32,9 @@ class AdminController extends Controller
             'todayMessages',
             'fallbackCount',
             'intentStats',
-            'topIntent'
+            'topIntent',
+            'ratingPositive',
+            'ratingNegative'
         ));
     }
 

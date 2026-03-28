@@ -108,4 +108,25 @@ class ChatbotController extends Controller
             'session'  => $sessionId,
         ]);
     }
+    
+public function rate(Request $request)
+{
+    $chatId  = $request->input('chat_id');
+    $rating  = $request->input('rating'); // 1 o 0
+
+    if (is_null($chatId) || is_null($rating)) {
+        return response()->json(['error' => 'Faltan datos'], 400);
+    }
+
+    $chat = Chat::find($chatId);
+
+    if (!$chat) {
+        return response()->json(['error' => 'Mensaje no encontrado'], 404);
+    }
+
+    $chat->rating = (int) $rating;
+    $chat->save();
+
+    return response()->json(['success' => true]);
+}
 }

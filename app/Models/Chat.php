@@ -10,7 +10,8 @@ class Chat extends Model
         'user_chat_id',
         'message',
         'reply',
-        'intent'
+        'intent',
+        'rating',
     ];
 
     public function user()

@@ -83,7 +83,7 @@ async function dacSend() {
     }
 
     dacRemoveTyping();
-    dacAddMessage('bot', data.reply, data.products || []);
+    dacAddMessage('bot', data.reply, data.products || [], data.chat_id || null);
 
   } catch (err) {
     dacRemoveTyping();
@@ -112,7 +112,7 @@ async function dacSelectProduct(productId, productName) {
     const data = await res.json();
 
     dacRemoveTyping();
-    dacAddMessage('bot', data.reply, data.products || []);
+    dacAddMessage('bot', data.reply, data.products || [], data.chat_id || null);
 
   } catch (err) {
     dacRemoveTyping();
@@ -121,7 +121,7 @@ async function dacSelectProduct(productId, productName) {
 }
 
 // ── AGREGAR MENSAJE ────────────────────────────────────────────
-function dacAddMessage(role, text, products = []) {
+function dacAddMessage(role, text, products = [], chatId = null) {
   const container = document.getElementById('dac-messages');
 
   const wrapper = document.createElement('div');
@@ -132,6 +132,7 @@ function dacAddMessage(role, text, products = []) {
   bubble.textContent = text;
   wrapper.appendChild(bubble);
 
+  // Botones de productos
   if (role === 'bot' && products.length > 0) {
     const btns = document.createElement('div');
     btns.className = 'dac-products';
@@ -158,8 +159,46 @@ function dacAddMessage(role, text, products = []) {
     wrapper.appendChild(btns);
   }
 
+  // Botones de calificación (solo bot con chatId)
+  if (role === 'bot' && chatId) {
+    const rating = document.createElement('div');
+    rating.className = 'dac-rating';
+
+    const btnUp = document.createElement('button');
+    btnUp.className = 'dac-rating-btn';
+    btnUp.textContent = '👍';
+    btnUp.onclick = () => dacRate(chatId, 1, btnUp, btnDown);
+
+    const btnDown = document.createElement('button');
+    btnDown.className = 'dac-rating-btn';
+    btnDown.textContent = '👎';
+    btnDown.onclick = () => dacRate(chatId, 0, btnUp, btnDown);
+
+    rating.appendChild(btnUp);
+    rating.appendChild(btnDown);
+    wrapper.appendChild(rating);
+  }
+
   container.appendChild(wrapper);
   container.scrollTop = container.scrollHeight;
+}
+
+async function dacRate(chatId, rating, btnUp, btnDown) {
+  btnUp.disabled   = true;
+  btnDown.disabled = true;
+
+  if (rating === 1) btnUp.classList.add('selected-up');
+  else btnDown.classList.add('selected-down');
+
+  try {
+    await fetch(`${DAC_API}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, rating: rating })
+    });
+  } catch (err) {
+    console.error('Error al calificar:', err);
+  }
 }
 
 // ── TYPING ─────────────────────────────────────────────────────

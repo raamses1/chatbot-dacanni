@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Services\WooCommerceService;
 use App\Services\AnthropicService;
+use Illuminate\Http\Request;
+use App\Models\Chat;
 
 class ChatbotService
 {
@@ -468,4 +470,5 @@ private function getArticle(string $name): string
 
     return trim(preg_replace('/\s+/', ' ', $text));
 }
+
 }
