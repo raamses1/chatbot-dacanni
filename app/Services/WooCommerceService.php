@@ -120,9 +120,22 @@ if (config('app.env') === 'local') {
     }
 
     // Filtrar por búsqueda
-    return array_values(array_filter($products, function ($p) use ($search) {
-        return str_contains(strtolower($p['name']), strtolower($search));
-    }));
+  return array_values(array_filter($products, function ($p) use ($search) {
+    $nameWords   = explode(' ', strtolower($p['name']));
+    $searchWords = explode(' ', strtolower($search));
+
+    foreach ($nameWords as $namePart) {
+        foreach ($searchWords as $searchPart) {
+            if (strlen($searchPart) > 2 && (
+                str_contains($namePart, $searchPart) ||
+                str_contains($searchPart, $namePart)
+            )) {
+                return true;
+            }
+        }
+    }
+    return false;
+}));
 }
 private function mockVariations(int $productId): array
 {

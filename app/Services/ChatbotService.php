@@ -86,18 +86,30 @@ class ChatbotService
                 return $this->searchAndSuggest($detectedProduct, 'precio', $userChat);
             }
 
-            return [
-                'reply'    => '¿De qué producto quieres saber el precio?',
-                'intent'   => null,
-                'score'    => 0,
-                'products' => [],
-            ];
+           // Intentar con Groq por si el usuario describió el producto
+    $aiReply = $this->anthropic->ask(
+        $rawMessage,
+        'El usuario está buscando el precio de un producto en la tienda Dacanni. Pídele amablemente que especifique el nombre exacto del producto.'
+    );
+
+    // Limpiar estado después de 2 intentos fallidos
+    $userChat->conversation_state = null;
+    $userChat->save();
+
+    return [
+        'reply'    => $aiReply ?? 'No pude identificar el producto. ¿Puedes decirme el nombre exacto?',
+        'intent'   => null,
+        'score'    => 0,
+        'products' => [],
+    ];
         }
 
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
-if ($score < 2) {
+$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock'];
+
+if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
     $intent = null;
 }
 
@@ -159,7 +171,6 @@ if ($score < 2) {
 
     private function searchAndSuggest(string $search, string $intent, $userChat): array
     {
-        \Log::info('searchAndSuggest búsqueda: ' . $search); // temporal
         $products = $this->woo->getProducts($search);
 
         if ($this->woo->isError($products)) {
@@ -234,6 +245,16 @@ if ($score < 2) {
                 }
             }
         }
+
+         // Resolver conflictos: si precio y envio tienen el mismo score, 
+    // y envio tiene al menos 1 punto, gana envio
+    if (
+        isset($scores['precio'], $scores['envio']) &&
+        $scores['precio'] === $scores['envio'] &&
+        $scores['envio'] >= 1
+    ) {
+        $scores['precio'] = 0;
+    }
 
         $bestIntent = null;
         $maxScore   = 0;
@@ -351,41 +372,56 @@ return [
     }
 
     private function buildStockReply(array $product): string
-    {
-        if (($product['type'] ?? 'simple') === 'simple') {
-            if (($product['stock_status'] ?? '') === 'instock') {
-                if (isset($product['stock_quantity'])) {
-                    return 'Tenemos ' . $product['stock_quantity'] . ' disponibles del ' . $product['name'];
-                }
-                return 'El ' . $product['name'] . ' está disponible';
+{
+    $article = $this->getArticle($product['name']);
+
+    if (($product['type'] ?? 'simple') === 'simple') {
+        if (($product['stock_status'] ?? '') === 'instock') {
+            if (isset($product['stock_quantity'])) {
+                return 'Tenemos ' . $product['stock_quantity'] . ' disponibles de ' . $article . ' ' . $product['name'];
             }
-            return 'El ' . $product['name'] . ' está agotado';
+            return $article . ' ' . $product['name'] . ' está disponible';
         }
-
-        if ($product['type'] === 'variable') {
-            $variations = $this->woo->getVariations($product['id']);
-
-            if ($this->woo->isError($variations)) {
-                return $variations['woo_error'] === 'connection'
-                    ? 'No pude conectarme para revisar las variaciones 😕 Intenta más tarde.'
-                    : 'No pude verificar las variaciones del producto.';
-            }
-
-            $totalStock = 0;
-            foreach ($variations as $variation) {
-                if (($variation['stock_status'] ?? '') === 'instock' && isset($variation['stock_quantity'])) {
-                    $totalStock += (int) $variation['stock_quantity'];
-                }
-            }
-
-            return $totalStock > 0
-                ? 'Tenemos ' . $totalStock . ' disponibles del ' . $product['name']
-                : 'El ' . $product['name'] . ' está agotado';
-        }
-
-        return 'No pude determinar la disponibilidad del producto.';
+        return $article . ' ' . $product['name'] . ($article === 'La' ? ' está agotada' : ' está agotado');
     }
 
+    if ($product['type'] === 'variable') {
+        $variations = $this->woo->getVariations($product['id']);
+
+        if ($this->woo->isError($variations)) {
+            return $variations['woo_error'] === 'connection'
+                ? 'No pude conectarme para revisar las variaciones 😕 Intenta más tarde.'
+                : 'No pude verificar las variaciones del producto.';
+        }
+
+        $totalStock = 0;
+        foreach ($variations as $variation) {
+            if (($variation['stock_status'] ?? '') === 'instock' && isset($variation['stock_quantity'])) {
+                $totalStock += (int) $variation['stock_quantity'];
+            }
+        }
+
+        return $totalStock > 0
+            ? 'Tenemos ' . $totalStock . ' disponibles de ' . $article . ' ' . $product['name']
+            : $article . ' ' . $product['name'] . ' está agotado';
+    }
+
+    return 'No pude determinar la disponibilidad del producto.';
+}
+
+private function getArticle(string $name): string
+{
+    $feminine = ['blusa', 'guayabera', 'playera', 'camisa', 'falda'];
+    $nameLower = strtolower($name);
+
+    foreach ($feminine as $word) {
+        if (str_contains($nameLower, $word)) {
+            return 'La';
+        }
+    }
+
+    return 'El';
+}
     // -------------------------------------------------------------------------
     // PROCESAMIENTO DE TEXTO
     // -------------------------------------------------------------------------
@@ -414,19 +450,22 @@ return [
         return implode(' ', $filtered);
     }
 
-    private function cleanSearchText(string $text): string
-    {
-        $stopWords = [
-            'hay', 'tienes', 'tienen', 'disponible', 'disponibles',
-            'stock', 'existencia', 'queda', 'quedan', 'precio',
-            'cuesta', 'vale', 'el', 'la', 'los', 'las', 'de', 'del',
-        ];
+   private function cleanSearchText(string $text): string
+{
+    $stopWords = [
+        'hay', 'tienes', 'tienen', 'disponible', 'disponibles',
+        'stock', 'existencia', 'queda', 'quedan', 'precio',
+        'cuesta', 'vale', 'el', 'la', 'los', 'las', 'de', 'del',
+    ];
 
-        $text = strtolower($text);
-        foreach ($stopWords as $word) {
-            $text = str_replace($word, '', $text);
-        }
-
-        return trim(preg_replace('/\s+/', ' ', $text));
+    $text = strtolower($text);
+    foreach ($stopWords as $word) {
+        $text = preg_replace('/\b' . preg_quote($word, '/') . '\b/', '', $text);
     }
+
+    // Eliminar letras sueltas (1 caracter)
+    $text = preg_replace('/\b[a-z]\b/', '', $text);
+
+    return trim(preg_replace('/\s+/', ' ', $text));
+}
 }
