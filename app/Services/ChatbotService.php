@@ -1,382 +1,432 @@
 <?php
 
 namespace App\Services;
+
 use App\Services\WooCommerceService;
+use App\Services\AnthropicService;
 
 class ChatbotService
 {
     protected WooCommerceService $woo;
+    protected AnthropicService $anthropic;
 
-    public function __construct(WooCommerceService $woo){
+    public function __construct(WooCommerceService $woo, AnthropicService $anthropic)
+    {
         $this->woo = $woo;
+        $this->anthropic = $anthropic;
     }
 
-     protected array $products = [
+    protected array $products = [
         'blusa',
         'guayabera',
         'vestido',
         'alebrije',
         'top',
         'corset',
-        'pantalon'
+        'pantalon',
     ];
 
     protected array $intents = [
-
         'saludo' => [
-            'keywords' => ['hola','buenas','hey','que','tal'],
-            'response' => '¡Hola! 👋 ¿En qué puedo ayudarte hoy?'
+            'keywords' => ['hola', 'buenas', 'hey', 'que', 'tal'],
+            'response' => '¡Hola! 👋 ¿En qué puedo ayudarte hoy?',
         ],
-
         'envio' => [
-            'keywords' => ['envio','envios','mandan','entrega','paqueteria'],
-            'response' => 'Hacemos envíos a todo México 📦'
+            'keywords' => ['envio', 'envios', 'mandan', 'entrega', 'paqueteria'],
+            'response' => 'Hacemos envíos a todo México 📦',
         ],
-
         'precio' => [
-            'keywords' => ['precio','cuesta','costo','vale'],
-            'response' => '¿De qué producto quieres saber el precio?'
+            'keywords' => ['precio', 'cuesta', 'costo', 'vale'],
+            'response' => '¿De qué producto quieres saber el precio?',
         ],
         'pago' => [
             'keywords' => ['pago', 'pagos', 'tarjeta', 'transferencia', 'deposito', 'efectivo', 'cuenta'],
-            'response' => 'Aceptamos tarjeta, transferencia, pago en linea (por la pagina), deposito bancario'
+            'response' => 'Aceptamos tarjeta, transferencia, pago en línea, depósito bancario.',
         ],
         'horario' => [
             'keywords' => ['horario', 'horarios', 'abren', 'cierran', 'hora'],
-            'response' => 'Nuestro horario es de lunes a sabado de 9 am a 8 pm, domingo de 10 am a 7pm, con un horario de comida de 3pm a 4 pm'
+            'response' => 'Lunes a sábado de 9am a 8pm, domingo de 10am a 7pm. Comida: 3pm a 4pm.',
         ],
         'stock' => [
-            'keywords' => ['disponible', 'disponibilidad', 'existencia', 'stock', 'agotado','hay'],
-            'response' => 'Dejame revisar la disponibilidad.'
+            'keywords' => ['disponible', 'disponibilidad', 'existencia', 'stock', 'agotado', 'hay'],
+            'response' => 'Déjame revisar la disponibilidad.',
         ],
-
     ];
 
-    public function processMessage(string $rawMessage, $userChat)
+    // -------------------------------------------------------------------------
+    // PROCESO PRINCIPAL
+    // -------------------------------------------------------------------------
+
+    public function processMessage(string $rawMessage, $userChat): array
     {
-        // normalizar texto
-        $message = $this->normalizeText($rawMessage);
-        
+        $message      = $this->normalizeText($rawMessage);
         $cleanMessage = $this->removeStopWords($message);
 
-        //guardar el ultimo mensaje
         $userChat->last_message = $cleanMessage;
         $userChat->save();
 
-
         $wordsOriginal = explode(' ', $message);
-        $wordsClean = explode(' ', $cleanMessage);
+        $wordsClean    = explode(' ', $cleanMessage);
 
-        // detectar producto
         $detectedProduct = $this->detectProduct($wordsClean);
 
         if ($detectedProduct) {
-            $userChat->last_product = $detectedProduct;
-            $userChat->conversation_state = null; //limpia estado
+            $userChat->last_product       = $detectedProduct;
+            $userChat->conversation_state = null;
             $userChat->save();
         }
 
-
-        if($userChat->conversation_state === 'waiting_product_price'){
-            if($detectedProduct){
+        // Estado: esperando producto para precio
+        if ($userChat->conversation_state === 'waiting_product_price') {
+            if ($detectedProduct) {
                 $userChat->conversation_state = null;
-                $userChat->last_product = $detectedProduct;
+                $userChat->last_product       = $detectedProduct;
                 $userChat->save();
 
-                return [
-                    'reply' => 'La'. $detectedProduct .'cuesta $5000 mxn',
-                    'intent' => 'precio',
-                    'score' => 1
-                ];
+                return $this->searchAndSuggest($detectedProduct, 'precio', $userChat);
             }
+
             return [
-                'reply' => '¿de que producto quieres saber el precio',
-                'intent' => null,
-                'score' => 0
+                'reply'    => '¿De qué producto quieres saber el precio?',
+                'intent'   => null,
+                'score'    => 0,
+                'products' => [],
             ];
         }
 
-        // detectar intent
         [$intent, $score] = $this->detectIntent($wordsOriginal);
+
+// Si el score es muy bajo, no confiar en la intención detectada
+if ($score < 2) {
+    $intent = null;
+}
 
         $userChat->last_intent = $intent;
         $userChat->save();
 
-        // generar respuesta
-        $reply = $this->buildReply($intent, $userChat);
+        return $this->buildReply($intent, $userChat);
+    }
+
+    // -------------------------------------------------------------------------
+    // SELECCIÓN DE PRODUCTO (desde botones del frontend)
+    // -------------------------------------------------------------------------
+
+    public function processSelection(int $productId, $userChat): array
+    {
+        if (!$userChat->awaiting_selection) {
+            return [
+                'reply'    => 'No hay ninguna selección pendiente.',
+                'intent'   => null,
+                'score'    => 0,
+                'products' => [],
+            ];
+        }
+
+        $suggested = json_decode($userChat->suggested_products, true);
+
+        if (empty($suggested)) {
+            return [
+                'reply'    => 'No encontré los productos sugeridos. Intenta buscar de nuevo.',
+                'intent'   => null,
+                'score'    => 0,
+                'products' => [],
+            ];
+        }
+
+        $selected = collect($suggested)->firstWhere('id', $productId);
+
+        if (!$selected) {
+            return [
+                'reply'    => 'No reconocí esa selección. Por favor elige una de las opciones.',
+                'intent'   => null,
+                'score'    => 0,
+                'products' => [],
+            ];
+        }
+
+        // Limpiar estado y guardar producto seleccionado
+        $userChat->last_product       = $selected['name'];
+        $userChat->awaiting_selection = 0;
+        $userChat->suggested_products = null;
+        $userChat->save();
+
+        return $this->replyFromProduct($selected, $userChat->last_intent, $selected['name']);
+    }
+
+    // -------------------------------------------------------------------------
+    // BÚSQUEDA Y SUGERENCIA DE PRODUCTOS
+    // -------------------------------------------------------------------------
+
+    private function searchAndSuggest(string $search, string $intent, $userChat): array
+    {
+        \Log::info('searchAndSuggest búsqueda: ' . $search); // temporal
+        $products = $this->woo->getProducts($search);
+
+        if ($this->woo->isError($products)) {
+            $msg = $products['woo_error'] === 'connection'
+                ? 'En este momento no puedo conectarme a la tienda 😕 Intenta más tarde.'
+                : 'Hubo un problema consultando la tienda. Intenta de nuevo.';
+
+            return ['reply' => $msg, 'intent' => $intent, 'score' => 0, 'products' => []];
+        }
+
+        if (empty($products)) {
+            return [
+                'reply'    => 'No encontré productos con ese nombre.',
+                'intent'   => $intent,
+                'score'    => 0,
+                'products' => [],
+            ];
+        }
+
+        // Guardar solo los campos necesarios
+        $toSave = collect($products)->map(fn($p) => [
+            'id'             => $p['id'],
+            'name'           => $p['name'],
+            'price'          => $p['price'] ?? null,
+            'type'           => $p['type'] ?? 'simple',
+            'stock_status'   => $p['stock_status'] ?? null,
+            'stock_quantity' => $p['stock_quantity'] ?? null,
+        ])->values()->toArray();
+
+        $userChat->suggested_products = json_encode($toSave);
+        $userChat->awaiting_selection = 1;
+        $userChat->last_intent        = $intent;
+        $userChat->save();
+
+        $intentLabel = $intent === 'precio' ? 'saber el precio' : 'revisar la disponibilidad';
 
         return [
-            'reply' => $reply,
-            'intent' => $intent,
-            'score' => $score
+            'reply'    => '¿De cuál de estos quieres ' . $intentLabel . '?',
+            'intent'   => $intent,
+            'score'    => 1,
+            'products' => $toSave, // El frontend usa esto para renderizar los botones
         ];
     }
 
-    //detectar producto
+    // -------------------------------------------------------------------------
+    // DETECCIÓN
+    // -------------------------------------------------------------------------
+
     private function detectProduct(array $words): ?string
     {
         foreach ($this->products as $product) {
-            foreach($words as $word){
+            foreach ($words as $word) {
                 if (str_contains($word, $product)) {
                     return $product;
                 }
             }
         }
-
         return null;
     }
 
-
-    //detectar intencion
     private function detectIntent(array $words): array
     {
         $scores = [];
 
         foreach ($this->intents as $intent => $data) {
-
             $scores[$intent] = 0;
-
             foreach ($data['keywords'] as $keyword) {
-
-                foreach($words as $word){
-                    if(str_contains($word, $keyword)){
+                foreach ($words as $word) {
+                    if (str_contains($word, $keyword)) {
                         $scores[$intent]++;
                     }
                 }
-
             }
         }
 
         $bestIntent = null;
-        $maxScore = 0;
+        $maxScore   = 0;
 
         foreach ($scores as $intent => $score) {
-
             if ($score > $maxScore) {
-                $maxScore = $score;
+                $maxScore   = $score;
                 $bestIntent = $intent;
             }
-
         }
 
         return [$bestIntent, $maxScore];
     }
 
+    // -------------------------------------------------------------------------
+    // CONSTRUCCIÓN DE RESPUESTA
+    // -------------------------------------------------------------------------
 
-    //imprimir la respuesta final
-    private function buildReply(?string $intent, $userChat): string
+    private function buildReply(?string $intent, $userChat): array
     {
-        //precio sin producto
-        if($intent === 'precio' &&!$userChat->last_product){
+        // --- PRECIO ---
+        if ($intent === 'precio' && !$userChat->last_product) {
             $userChat->conversation_state = 'waiting_product_price';
             $userChat->save();
 
-            return '¿de que producto quieres saber el precio?';
+            return [
+                'reply'    => '¿De qué producto quieres saber el precio?',
+                'intent'   => $intent,
+                'score'    => 0,
+                'products' => [],
+            ];
         }
-        // precio con producto
+
         if ($intent === 'precio' && $userChat->last_product) {
-            $product = $this->findProductWoo($userChat->last_message ?? $userChat->last_product);
-
-            if(!$product){
-                return 'No logre encontrar el producto';
-            }
-            return 'El precio del ' . $product['name'] .' es $ ' . $product['price'] .'MXN';
+            $search = $this->cleanSearchText($userChat->last_message) ?: $userChat->last_product;
+            return $this->searchAndSuggest($search, 'precio', $userChat);
         }
 
-        // envio con producto
+        // --- ENVÍO ---
         if ($intent === 'envio' && $userChat->last_product) {
-
-            return 'El envío del ' .
-                $userChat->last_product .
-                ' tarda de 2 a 4 días 📦';
-
+            return [
+                'reply'    => 'El envío del ' . $userChat->last_product . ' tarda de 2 a 4 días 📦',
+                'intent'   => $intent,
+                'score'    => 1,
+                'products' => [],
+            ];
         }
 
-        //detectar stock sin producto
-        if($intent === 'stock' && !$userChat->last_product){
-            return '¿De que producto quieres saber la disponibilidad?';
-        };
+        // --- STOCK ---
+        if ($intent === 'stock' && !$userChat->last_product) {
+            return [
+                'reply'    => '¿De qué producto quieres saber la disponibilidad?',
+                'intent'   => $intent,
+                'score'    => 0,
+                'products' => [],
+            ];
+        }
 
-        
-        // stock con producto
-if ($intent === 'stock' && $userChat->last_product) {
+        if ($intent === 'stock' && $userChat->last_product) {
+            $search = $this->cleanSearchText($userChat->last_message) ?: $userChat->last_product;
+            return $this->searchAndSuggest($search, 'stock', $userChat);
+        }
 
-$searchProduct = $this->cleanSearchText($userChat->last_message);
+        // --- RESPUESTA GENÉRICA ---
+        if ($intent && isset($this->intents[$intent])) {
+            return [
+                'reply'    => $this->intents[$intent]['response'],
+                'intent'   => $intent,
+                'score'    => 1,
+                'products' => [],
+            ];
+        }
 
-if(!$searchProduct){
-    $searchProduct = $userChat->last_product;
-}
+        $aiReply = $this->anthropic->ask($userChat->last_message ?? '');
 
-$product = $this->findProductWoo($searchProduct);
-
-    if (!$product) {
-        return 'No encontré ese producto';
+return [
+    'reply'    => $aiReply ?? 'Lo siento, no entendí tu pregunta 😕',
+    'intent'   => 'ai_fallback',
+    'score'    => 0,
+    'products' => [],
+];
     }
 
-    //peoducto simple
-    if ($product['type'] === 'simple') {
+    // -------------------------------------------------------------------------
+    // RESPUESTA SEGÚN PRODUCTO
+    // -------------------------------------------------------------------------
 
-        if ($product['stock_status'] === 'instock') {
+    private function replyFromProduct(array $product, ?string $intent, string $fallbackName): array
+    {
+        if ($intent === 'precio') {
+            $price = $product['price'] ?? 'no disponible';
+            return [
+                'reply'    => 'El precio del ' . $product['name'] . ' es $' . $price . ' MXN',
+                'intent'   => $intent,
+                'score'    => 1,
+                'products' => [],
+            ];
+        }
 
-            if (isset($product['stock_quantity'])) {
-                return 'Tenemos ' . $product['stock_quantity'] . ' disponibles del ' . $product['name'];
+        if ($intent === 'stock') {
+            return [
+                'reply'    => $this->buildStockReply($product),
+                'intent'   => $intent,
+                'score'    => 1,
+                'products' => [],
+            ];
+        }
+
+        return [
+            'reply'    => 'Producto: ' . $product['name'],
+            'intent'   => $intent,
+            'score'    => 1,
+            'products' => [],
+        ];
+    }
+
+    private function buildStockReply(array $product): string
+    {
+        if (($product['type'] ?? 'simple') === 'simple') {
+            if (($product['stock_status'] ?? '') === 'instock') {
+                if (isset($product['stock_quantity'])) {
+                    return 'Tenemos ' . $product['stock_quantity'] . ' disponibles del ' . $product['name'];
+                }
+                return 'El ' . $product['name'] . ' está disponible';
+            }
+            return 'El ' . $product['name'] . ' está agotado';
+        }
+
+        if ($product['type'] === 'variable') {
+            $variations = $this->woo->getVariations($product['id']);
+
+            if ($this->woo->isError($variations)) {
+                return $variations['woo_error'] === 'connection'
+                    ? 'No pude conectarme para revisar las variaciones 😕 Intenta más tarde.'
+                    : 'No pude verificar las variaciones del producto.';
             }
 
-            return 'El ' . $product['name'] . ' está disponible';
-        }
-
-        return 'El ' . $product['name'] . ' está agotado';
-    }
-
-    //producto variable
-    if ($product['type'] === 'variable') {
-
-        $variations = $this->woo->getVariations($product['id']);
-
-        if (!$variations) {
-            return 'No pude verificar las variaciones del producto';
-        }
-
-        $totalStock = 0;
-
-        foreach ($variations as $variation) {
-
-            if ($variation['stock_status'] === 'instock') {
-
-                if (isset($variation['stock_quantity'])) {
+            $totalStock = 0;
+            foreach ($variations as $variation) {
+                if (($variation['stock_status'] ?? '') === 'instock' && isset($variation['stock_quantity'])) {
                     $totalStock += (int) $variation['stock_quantity'];
                 }
             }
+
+            return $totalStock > 0
+                ? 'Tenemos ' . $totalStock . ' disponibles del ' . $product['name']
+                : 'El ' . $product['name'] . ' está agotado';
         }
 
-        if ($totalStock > 0) {
-            return 'Tenemos ' . $totalStock . ' disponibles del ' . $product['name'];
-        }
-
-        return 'El ' . $product['name'] . ' está agotado';
-    }
-}
-
-
-        // respuesta normal
-        if ($intent && isset($this->intents[$intent])) {
-
-            return $this->intents[$intent]['response'];
-
-        }
-
-        return 'Lo siento, no entendí tu pregunta 😕';
+        return 'No pude determinar la disponibilidad del producto.';
     }
 
-    //encontrar producto woocomerce
-    private function findProductWoo(string $name){
-        $products = $this->woo->getProducts($name);
-        
+    // -------------------------------------------------------------------------
+    // PROCESAMIENTO DE TEXTO
+    // -------------------------------------------------------------------------
 
-        if(empty($products)){
-            return null;
-        }
-        return $this->bestMatch($products, $name); //optimizacion en la busqueda de productos 
-    }
-
-    //funcion para normalizar texto
     private function normalizeText(string $text): string
     {
         $text = strtolower(trim($text));
-
         $text = str_replace(
-            ['á','é','í','ó','ú','ñ'],
-            ['a','e','i','o','u','n'],
+            ['á', 'é', 'í', 'ó', 'ú', 'ñ'],
+            ['a', 'e', 'i', 'o', 'u', 'n'],
             $text
         );
-
-        $text = preg_replace('/[^a-z0-9\s]/', '', $text);
-
-        return $text;
+        return preg_replace('/[^a-z0-9\s]/', '', $text);
     }
-
-    private function bestMatch(array $products, string $search)
-{
-    $search = strtolower($search);
-
-    $best = null;
-    $bestScore = 0;
-
-    foreach ($products as $product) {
-
-        if (!isset($product['name'])) {
-            continue;
-        }
-
-        $name = strtolower($product['name']);
-
-        // 🔥 PRIORIDAD 1: si el nombre contiene exactamente la palabra buscada
-        if (str_contains($name, $search)) {
-            return $product;
-        }
-
-        // 🔥 PRIORIDAD 2: similitud
-        similar_text($search, $name, $percent);
-
-        if ($percent > $bestScore) {
-            $bestScore = $percent;
-            $best = $product;
-        }
-    }
-
-    return $best;
-}
 
     private function removeStopWords(string $text): string
-{
-    $stopWords = [
-        'cuanto','cuesta','precio','vale','quiero',
-        'saber','el','la','los','las','de','un','una',
-        'por','favor','me','das'
-    ];
+    {
+        $stopWords = [
+            'cuanto', 'cuesta', 'precio', 'vale', 'quiero',
+            'saber', 'el', 'la', 'los', 'las', 'de', 'un', 'una',
+            'por', 'favor', 'me', 'das',
+        ];
 
-    $words = explode(' ', $text);
-
-    $filtered = array_filter($words, function($word) use ($stopWords){
-        return !in_array($word, $stopWords);
-    });
-
-    return implode(' ', $filtered);
-}
-
-private function cleanSearchText($text)
-{
-    $stopWords = [
-        'hay',
-        'tienes',
-        'tienen',
-        'disponible',
-        'disponibles',
-        'stock',
-        'existencia',
-        'queda',
-        'quedan',
-        'precio',
-        'cuesta',
-        'vale',
-        'el',
-        'la',
-        'los',
-        'las',
-        'de',
-        'del',
-        '?'
-    ];
-
-    $text = strtolower($text);
-
-    foreach ($stopWords as $word) {
-        $text = str_replace($word, '', $text);
+        $words    = explode(' ', $text);
+        $filtered = array_filter($words, fn($w) => !in_array($w, $stopWords));
+        return implode(' ', $filtered);
     }
 
-    return trim(preg_replace('/\s+/', ' ', $text));
-}
+    private function cleanSearchText(string $text): string
+    {
+        $stopWords = [
+            'hay', 'tienes', 'tienen', 'disponible', 'disponibles',
+            'stock', 'existencia', 'queda', 'quedan', 'precio',
+            'cuesta', 'vale', 'el', 'la', 'los', 'las', 'de', 'del',
+        ];
 
+        $text = strtolower($text);
+        foreach ($stopWords as $word) {
+            $text = str_replace($word, '', $text);
+        }
 
+        return trim(preg_replace('/\s+/', ' ', $text));
     }
-
+}

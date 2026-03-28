@@ -34,5 +34,13 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'woocommerce' => [
+    'url'    => env('WOO_URL'),
+    'key'    => env('WOO_KEY'),
+    'secret' => env('WOO_SECRET'),
+],
+'groq' => [
+    'key' => env('GROQ_API_KEY'),
+],
 
 ];

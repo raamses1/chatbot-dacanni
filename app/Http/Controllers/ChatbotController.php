@@ -1,28 +1,32 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\UserChat;
 use App\Models\Chat;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Session;
 use App\Services\ChatbotService;
 use App\Services\WooCommerceService;
-
 use Illuminate\Http\Request;
 
 class ChatbotController extends Controller
 {
-     protected $chatbotService;
+    protected $chatbotService;
 
     public function __construct(ChatbotService $chatbotService)
     {
         $this->chatbotService = $chatbotService;
     }
 
-    public function testWoo(WooCommerceService $woo){
+    public function testWoo(WooCommerceService $woo)
+    {
         return $woo->getProducts();
     }
 
+    /**
+     * Maneja mensajes normales del chatbot.
+     * POST /api/v1/chat
+     */
     public function handle(Request $request)
     {
         $rawMessage = $request->input('message');
@@ -33,36 +37,75 @@ class ChatbotController extends Controller
             ], 400);
         }
 
-        // sesión
-         $sessionId = $request->input('session');
+        $sessionId = $request->input('session');
 
-    if (!$sessionId) {
-        $sessionId = Str::random(40);
-    }
-        $ip = $request->ip();
+        if (!$sessionId) {
+            $sessionId = Str::random(40);
+        }
 
         $userChat = UserChat::firstOrCreate(
             ['session_id' => $sessionId],
-            ['ip' => $ip]
+            ['ip' => $request->ip()]
         );
 
-        // procesar con Service
-        $result = $this->chatbotService->processMessage($rawMessage, $userChat); 
-        
-        // guardar chat
+        $result = $this->chatbotService->processMessage($rawMessage, $userChat);
+
         $chat = Chat::create([
             'user_chat_id' => $userChat->id,
-            'message' => $rawMessage,
-            'reply' => $result['reply'],
-            'intent' => $result['intent']
+            'message'      => $rawMessage,
+            'reply'        => $result['reply'],
+            'intent'       => $result['intent'],
         ]);
 
         return response()->json([
-            'reply' => $result['reply'],
-            'intent' => $result['intent'],
-            'score' => $result['score'],
-            'chat_id' => $chat->id,
-            'session' => $sessionId
+            'reply'    => $result['reply'],
+            'intent'   => $result['intent'],
+            'score'    => $result['score'],
+            'products' => $result['products'] ?? [],
+            'chat_id'  => $chat->id,
+            'session'  => $sessionId,
+        ]);
+    }
+
+    /**
+     * Maneja la selección de un producto desde los botones del frontend.
+     * POST /api/v1/select
+     */
+    public function select(Request $request)
+    {
+        $sessionId = $request->input('session');
+        $productId = $request->input('product_id');
+
+        if (!$sessionId || !$productId) {
+            return response()->json([
+                'error' => 'Faltan datos: session y product_id son requeridos'
+            ], 400);
+        }
+
+        $userChat = UserChat::where('session_id', $sessionId)->first();
+
+        if (!$userChat) {
+            return response()->json([
+                'error' => 'Sesión no encontrada'
+            ], 404);
+        }
+
+        $result = $this->chatbotService->processSelection((int) $productId, $userChat);
+
+        $chat = Chat::create([
+            'user_chat_id' => $userChat->id,
+            'message'      => 'Selección: product_id ' . $productId,
+            'reply'        => $result['reply'],
+            'intent'       => $result['intent'],
+        ]);
+
+        return response()->json([
+            'reply'    => $result['reply'],
+            'intent'   => $result['intent'],
+            'score'    => $result['score'],
+            'products' => $result['products'] ?? [],
+            'chat_id'  => $chat->id,
+            'session'  => $sessionId,
         ]);
     }
 }
