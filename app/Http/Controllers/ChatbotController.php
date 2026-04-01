@@ -129,4 +129,25 @@ public function rate(Request $request)
 
     return response()->json(['success' => true]);
 }
+public function history(Request $request)
+{
+    $sessionId = $request->input('session');
+
+    if (!$sessionId) {
+        return response()->json(['chats' => []]);
+    }
+
+    $userChat = UserChat::where('session_id', $sessionId)->first();
+
+    if (!$userChat) {
+        return response()->json(['chats' => []]);
+    }
+
+    $chats = Chat::where('user_chat_id', $userChat->id)
+        ->orderBy('created_at', 'asc')
+        ->take(20)
+        ->get(['id', 'message', 'reply', 'intent', 'rating']);
+
+    return response()->json(['chats' => $chats]);
+}
 }

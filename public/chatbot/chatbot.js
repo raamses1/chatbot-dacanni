@@ -42,16 +42,60 @@ function buildWidget() {
 }
 
 // ── TOGGLE ─────────────────────────────────────────────────────
-function dacToggle() {
+async function dacToggle() {
   dacIsOpen = !dacIsOpen;
   document.getElementById('dac-chat').classList.toggle('dac-open', dacIsOpen);
   document.getElementById('dac-notif').style.display = 'none';
 
   if (dacIsOpen) {
-    if (document.getElementById('dac-messages').childElementCount === 0) {
-      dacAddMessage('bot', '¡Hola! 👋 Soy el asistente de Dacanni. ¿En qué puedo ayudarte hoy?');
+    const messages = document.getElementById('dac-messages');
+
+    // Solo cargar historial si no hay mensajes ya renderizados
+    if (messages.childElementCount === 0) {
+      if (dacSession) {
+        await dacLoadHistory();
+      } else {
+        dacAddMessage('bot', '¡Hola! 👋 Soy el asistente de Dacanni. ¿En qué puedo ayudarte hoy?');
+      }
     }
+
     setTimeout(() => document.getElementById('dac-input').focus(), 300);
+  }
+}
+
+async function dacLoadHistory() {
+  try {
+    const res = await fetch(`${DAC_API}/history?session=${dacSession}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const data = await res.json();
+
+    if (!data.chats || data.chats.length === 0) {
+      dacAddMessage('bot', '¡Hola! 👋 Soy el asistente de Dacanni. ¿En qué puedo ayudarte hoy?');
+      return;
+    }
+
+    // Renderizar historial
+    data.chats.forEach(chat => {
+      dacAddMessage('user', chat.message);
+      dacAddMessage('bot', chat.reply, [], chat.id);
+
+      // Si ya fue calificado, marcar los botones
+      if (chat.rating !== null) {
+        const allRatingBtns = document.querySelectorAll('.dac-rating-btn');
+        const lastBtns = Array.from(allRatingBtns).slice(-2);
+        if (lastBtns.length === 2) {
+          lastBtns[0].disabled = true;
+          lastBtns[1].disabled = true;
+          if (chat.rating === 1) lastBtns[0].classList.add('selected-up');
+          else lastBtns[1].classList.add('selected-down');
+        }
+      }
+    });
+
+  } catch (err) {
+    dacAddMessage('bot', '¡Hola! 👋 Soy el asistente de Dacanni. ¿En qué puedo ayudarte hoy?');
   }
 }
 
