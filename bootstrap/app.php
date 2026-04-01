@@ -24,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->group('api', [
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
     ]);
+    $middleware->alias([
+        'auth.admin' => \App\Http\Middleware\AdminAuth::class,
+    ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

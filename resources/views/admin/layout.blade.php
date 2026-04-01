@@ -195,8 +195,17 @@
     </nav>
 
     <div class="sidebar-footer">
-        <p>Dacanni® Chatbot v1.0</p>
-    </div>
+    <a href="{{ route('home') }}" style="display:block; color:rgba(255,255,255,0.6); text-decoration:none; font-size:13px; margin-bottom:10px; transition:color 0.2s;" onmouseover="this.style.color='#E8197D'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+        ← Volver a la tienda
+    </a>
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit" style="background:none; border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.5); padding:7px 14px; border-radius:8px; cursor:pointer; font-size:12px; width:100%; font-family:'DM Sans',sans-serif; transition:all 0.2s;" onmouseover="this.style.borderColor='#E8197D';this.style.color='#E8197D'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='rgba(255,255,255,0.5)'">
+            Cerrar sesión
+        </button>
+    </form>
+    <p style="margin-top:10px;">Dacanni® Chatbot v1.0</p>
+</div>
 </aside>
 
 <main class="main">

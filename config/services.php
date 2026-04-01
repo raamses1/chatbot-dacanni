@@ -42,5 +42,8 @@ return [
 'groq' => [
     'key' => env('GROQ_API_KEY'),
 ],
-
+'admin' => [
+    'user'     => env('ADMIN_USER'),
+    'password' => env('ADMIN_PASSWORD'),
+],
 ];
