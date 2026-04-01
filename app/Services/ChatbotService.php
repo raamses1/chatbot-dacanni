@@ -184,14 +184,19 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
         }
 
         if (empty($products)) {
-            return [
-                'reply'    => 'No encontré productos con ese nombre.',
-                'intent'   => $intent,
-                'score'    => 0,
-                'products' => [],
-            ];
-        }
+    $categoria = $userChat->last_product ?? $search;
+    $aiReply = $this->anthropic->ask(
+        "El cliente buscó '$categoria' pero no encontré ese producto en el catálogo.",
+        'Responde amablemente que no encontraste ese producto exacto. Sugiere al cliente que puede preguntar por otras categorías disponibles como vestidos, blusas, guayaberas, tops, corsets o pantalones. Sé muy breve, máximo 2 oraciones.'
+    );
 
+    return [
+        'reply'    => $aiReply ?? 'No encontré ese producto. Puedes preguntar por vestidos, blusas, guayaberas, tops, corsets o pantalones.',
+        'intent'   => $intent,
+        'score'    => 0,
+        'products' => [],
+    ];
+}
         // Guardar solo los campos necesarios
         $toSave = collect($products)->map(fn($p) => [
             'id'             => $p['id'],
@@ -330,10 +335,13 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
             ];
         }
 
-        $aiReply = $this->anthropic->ask($userChat->last_message ?? '');
+        $aiReply = $this->anthropic->ask(
+    $userChat->last_message ?? '',
+    'Si no puedes responder la pregunta con certeza, sugiere amablemente al cliente que contacte a Dacanni directamente o visite la tienda.'
+);
 
 return [
-    'reply'    => $aiReply ?? 'Lo siento, no entendí tu pregunta 😕',
+    'reply'    => $aiReply ?? 'No entendí tu pregunta 😕 Puedes preguntar por precios, stock, envíos, horarios o métodos de pago.',
     'intent'   => 'ai_fallback',
     'score'    => 0,
     'products' => [],
