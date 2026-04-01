@@ -54,6 +54,14 @@
       <li><a href="#">Nosotros</a></li>
       <li><a href="#">Contacto</a></li>
       <li><a href="{{ route('admin.dashboard') }}" class="nav-admin">⚙ Panel Admin</a></li>
+      <li>
+    <form method="POST" action="{{ route('logout') }}" style="display:inline;">
+        @csrf
+        <button type="submit" style="background:none; border:1px solid rgba(255,255,255,0.3); color:rgba(255,255,255,0.7); padding:6px 14px; border-radius:8px; font-size:12px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s;" onmouseover="this.style.borderColor='#E8197D';this.style.color='#E8197D'" onmouseout="this.style.borderColor='rgba(255,255,255,0.3)';this.style.color='rgba(255,255,255,0.7)'">
+            Cerrar sesión
+        </button>
+    </form>
+</li>
     </ul>
   </nav>
 

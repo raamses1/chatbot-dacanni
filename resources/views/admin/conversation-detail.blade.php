@@ -233,17 +233,25 @@
                     </div>
 
                     {{-- Respuesta del bot --}}
-                    <div class="msg-wrap bot">
-                        <div class="msg-bubble">{{ $chat->reply }}</div>
-                        <div class="msg-meta">
-                            {{ $chat->created_at->format('H:i') }}
-                            @if($chat->intent)
-                                <span class="msg-intent {{ $chat->intent === 'ai_fallback' ? 'ai' : '' }}">
-                                    {{ $chat->intent }}
-                                </span>
-                            @endif
-                        </div>
-                    </div>
+<div class="msg-wrap bot">
+    <div class="msg-bubble">{{ $chat->reply }}</div>
+    <div class="msg-meta">
+        {{ $chat->created_at->format('H:i') }}
+        @if($chat->intent)
+            <span class="msg-intent {{ $chat->intent === 'ai_fallback' ? 'ai' : '' }}">
+                {{ $chat->intent }}
+            </span>
+        @endif
+        @if(!is_null($chat->rating))
+            <span style="font-size:14px;">
+                {{ $chat->rating === 1 ? '👍' : '👎' }}
+            </span>
+        @endif
+        @if(is_null($chat->rating))
+            <span style="font-size:11px; color:#c8ccd8;">sin calificar</span>
+        @endif
+    </div>
+</div>
 
                 @endforeach
             </div>
