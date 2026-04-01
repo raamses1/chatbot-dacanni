@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\UserChat;
 use App\Models\Chat;
 use Illuminate\Http\Request;
+use App\Models\Setting;
 
 class AdminController extends Controller
 {
@@ -26,25 +27,40 @@ class AdminController extends Controller
 
         $topIntent = $intentStats->first();
 
-        return view('admin.dashboard', compact(
-            'totalSessions',
-            'totalMessages',
-            'todayMessages',
-            'fallbackCount',
-            'intentStats',
-            'topIntent',
-            'ratingPositive',
-            'ratingNegative'
-        ));
+        $maintenanceMode = Setting::get('maintenance_mode', '0') === '1';
+
+return view('admin.dashboard', compact(
+    'totalSessions',
+    'totalMessages',
+    'todayMessages',
+    'fallbackCount',
+    'intentStats',
+    'topIntent',
+    'ratingPositive',
+    'ratingNegative',
+    'maintenanceMode'
+));
     }
 
     public function conversations(Request $request)
     {
-        $conversations = UserChat::withCount('chats')
-            ->orderByDesc('updated_at')
-            ->paginate(15);
+       $query = UserChat::withCount('chats')->orderByDesc('updated_at');
 
-        return view('admin.conversations', compact('conversations'));
+    // Filtro por intención
+    if ($request->filled('intent')) {
+        $query->where('last_intent', $request->intent);
+    }
+
+    // Filtro por fecha
+    if ($request->filled('date')) {
+        $query->whereDate('updated_at', $request->date);
+    }
+
+    $conversations = $query->paginate(15)->withQueryString();
+
+    $intents = ['saludo', 'precio', 'stock', 'envio', 'pago', 'horario', 'ai_fallback'];
+
+    return view('admin.conversations', compact('conversations', 'intents'));
     }
 
     public function conversationDetail($id)
@@ -52,4 +68,12 @@ class AdminController extends Controller
         $userChat = UserChat::with('chats')->findOrFail($id);
         return view('admin.conversation-detail', compact('userChat'));
     }
+    public function toggleMaintenance(Request $request)
+{
+    $current = \App\Models\Setting::get('maintenance_mode', '0');
+    $new = $current === '1' ? '0' : '1';
+    \App\Models\Setting::set('maintenance_mode', $new);
+
+    return back()->with('success', $new === '1' ? 'Chatbot en mantenimiento.' : 'Chatbot activado.');
+}
 }

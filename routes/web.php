@@ -12,6 +12,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Rutas protegidas
 Route::middleware('auth.admin')->group(function () {
     Route::get('/', [AuthController::class, 'showHome'])->name('home');
+    Route::post('/admin/settings/maintenance', [AdminController::class, 'toggleMaintenance'])->name('admin.maintenance');
 
     Route::prefix('admin')->group(function () {
         Route::get('/',                    [AdminController::class, 'dashboard'])->name('admin.dashboard');

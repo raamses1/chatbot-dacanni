@@ -29,6 +29,18 @@ class ChatbotController extends Controller
      */
     public function handle(Request $request)
     {
+        // Verificar modo mantenimiento
+    if (\App\Models\Setting::get('maintenance_mode', '0') === '1') {
+        return response()->json([
+            'reply'    => 'El chatbot está temporalmente en mantenimiento 🔧 Vuelve pronto.',
+            'intent'   => 'maintenance',
+            'score'    => 0,
+            'products' => [],
+            'chat_id'  => null,
+            'session'  => $request->input('session'),
+        ]);
+    }
+    
         $rawMessage = $request->input('message');
 
         if (!$rawMessage) {
@@ -149,5 +161,31 @@ public function history(Request $request)
         ->get(['id', 'message', 'reply', 'intent', 'rating']);
 
     return response()->json(['chats' => $chats]);
+}
+public function stats()
+{
+    $totalSessions  = UserChat::count();
+    $totalMessages  = Chat::count();
+    $todayMessages  = Chat::whereDate('created_at', today())->count();
+    $fallbackCount  = Chat::where('intent', 'ai_fallback')->count();
+    $ratingPositive = Chat::where('rating', 1)->count();
+    $ratingNegative = Chat::where('rating', 0)->count();
+
+    $intentStats = Chat::whereNotNull('intent')
+        ->where('intent', '!=', 'ai_fallback')
+        ->selectRaw('intent, COUNT(*) as total')
+        ->groupBy('intent')
+        ->orderByDesc('total')
+        ->get();
+
+    return response()->json([
+        'sessions'        => $totalSessions,
+        'messages'        => $totalMessages,
+        'messages_today'  => $todayMessages,
+        'ai_fallbacks'    => $fallbackCount,
+        'rating_positive' => $ratingPositive,
+        'rating_negative' => $ratingNegative,
+        'top_intents'     => $intentStats,
+    ]);
 }
 }

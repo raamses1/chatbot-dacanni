@@ -226,6 +226,41 @@
 </div>
 </div>
 
+{{-- MODO MANTENIMIENTO --}}
+<div class="card" style="margin-bottom: 24px; display:flex; align-items:center; justify-content:space-between; padding: 20px 24px;">
+    <div>
+        <h3 style="font-family:'Playfair Display',serif; font-size:16px; color:var(--blue); margin-bottom:4px;">
+            Estado del Chatbot
+        </h3>
+        <p style="font-size:13px; color:var(--text-soft);">
+            {{ $maintenanceMode ? 'El chatbot está en mantenimiento.' : 'El chatbot está activo y funcionando.' }}
+        </p>
+    </div>
+    <form method="POST" action="{{ route('admin.maintenance') }}">
+        @csrf
+        <button type="submit" style="
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: {{ $maintenanceMode ? '#4ade80' : '#E8197D' }};
+            color: white;
+        ">
+            {{ $maintenanceMode ? '✅ Activar chatbot' : '🔴 Poner en mantenimiento' }}
+        </button>
+    </form>
+</div>
+
+@if(session('success'))
+    <div style="background:#dcfce7; border:1px solid #4ade80; color:#16a34a; padding:10px 16px; border-radius:10px; margin-bottom:16px; font-size:13px;">
+        {{ session('success') }}
+    </div>
+@endif
+
 {{-- INFERIOR --}}
 <div class="bottom-grid">
 

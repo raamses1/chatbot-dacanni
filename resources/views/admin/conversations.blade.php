@@ -150,6 +150,35 @@
         <span>{{ $conversations->total() }} sesiones en total</span>
     </div>
 
+    {{-- FILTROS --}}
+<form method="GET" action="{{ route('admin.conversations') }}" style="padding: 16px 24px; border-bottom: 1px solid var(--gray-2); display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+    <select name="intent" style="padding:8px 12px; border:1.5px solid var(--gray-2); border-radius:10px; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); outline:none; background:var(--gray);">
+        <option value="">Todas las intenciones</option>
+        @foreach($intents as $intent)
+            <option value="{{ $intent }}" {{ request('intent') === $intent ? 'selected' : '' }}>
+                {{ ucfirst($intent) }}
+            </option>
+        @endforeach
+    </select>
+
+    <input
+        type="date"
+        name="date"
+        value="{{ request('date') }}"
+        style="padding:8px 12px; border:1.5px solid var(--gray-2); border-radius:10px; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); outline:none; background:var(--gray);"
+    >
+
+    <button type="submit" style="padding:8px 18px; background:var(--blue); color:white; border:none; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer;">
+        Filtrar
+    </button>
+
+    @if(request('intent') || request('date'))
+        <a href="{{ route('admin.conversations') }}" style="padding:8px 18px; background:var(--gray-2); color:var(--text); border-radius:10px; font-size:13px; text-decoration:none;">
+            Limpiar
+        </a>
+    @endif
+</form>
+
     @if($conversations->isEmpty())
         <div class="empty-state">No hay conversaciones registradas aún.</div>
     @else
