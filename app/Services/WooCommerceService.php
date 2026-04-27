@@ -26,10 +26,6 @@ class WooCommerceService
 
     public function getProducts(string $search = null): array
     {
-        // MODO PRUEBA — quitar cuando dacanni.com se restaure
-if (config('app.env') === 'local') {
-    return $this->mockProducts($search);
-}
         try {
             $params = [
                 'consumer_key'    => $this->key,
@@ -64,10 +60,7 @@ if (config('app.env') === 'local') {
 
     public function getVariations(int $productId): array
     {
-        // MODO PRUEBA — quitar cuando dacanni.com se restaure
-if (config('app.env') === 'local') {
-    return $this->mockVariations($productId);
-}
+        
         try {
             $response = $this->client->get("/wp-json/wc/v3/products/{$productId}/variations", [
                 'query' => [
@@ -102,48 +95,5 @@ if (config('app.env') === 'local') {
     {
         return $result['woo_error'] ?? null;
     }
-    private function mockProducts(?string $search): array
-{
-    $products = [
-        ['id' => 1, 'name' => 'Vestido Discordia', 'price' => '950', 'type' => 'simple', 'stock_status' => 'instock', 'stock_quantity' => 3],
-        ['id' => 2, 'name' => 'Vestido Luna',      'price' => '850', 'type' => 'simple', 'stock_status' => 'instock', 'stock_quantity' => 1],
-        ['id' => 3, 'name' => 'Blusa Alebrije',    'price' => '620', 'type' => 'simple', 'stock_status' => 'instock', 'stock_quantity' => 5],
-        ['id' => 4, 'name' => 'Blusa Primavera',   'price' => '580', 'type' => 'simple', 'stock_status' => 'outofstock', 'stock_quantity' => 0],
-        ['id' => 5, 'name' => 'Top Luna',          'price' => '480', 'type' => 'simple', 'stock_status' => 'instock', 'stock_quantity' => 8],
-        ['id' => 6, 'name' => 'Corset Magnolia',   'price' => '1100','type' => 'simple', 'stock_status' => 'instock', 'stock_quantity' => 2],
-        ['id' => 7, 'name' => 'Guayabera Oaxaca',  'price' => '750', 'type' => 'simple', 'stock_status' => 'instock', 'stock_quantity' => 4],
-        ['id' => 8, 'name' => 'Pantalon Copal',    'price' => '890', 'type' => 'simple', 'stock_status' => 'outofstock', 'stock_quantity' => 0],
-    ];
-
-    if (!$search) {
-        return $products;
-    }
-
-    // Filtrar por búsqueda
-  return array_values(array_filter($products, function ($p) use ($search) {
-    $nameWords   = explode(' ', strtolower($p['name']));
-    $searchWords = explode(' ', strtolower($search));
-
-    foreach ($nameWords as $namePart) {
-        foreach ($searchWords as $searchPart) {
-            if (strlen($searchPart) > 2 && (
-                str_contains($namePart, $searchPart) ||
-                str_contains($searchPart, $namePart)
-            )) {
-                return true;
-            }
-        }
-    }
-    return false;
-}));
-}
-private function mockVariations(int $productId): array
-{
-    return [
-        ['id' => 101, 'stock_status' => 'instock',    'stock_quantity' => 2],
-        ['id' => 102, 'stock_status' => 'instock',    'stock_quantity' => 1],
-        ['id' => 103, 'stock_status' => 'outofstock', 'stock_quantity' => 0],
-    ];
-}
 
 }

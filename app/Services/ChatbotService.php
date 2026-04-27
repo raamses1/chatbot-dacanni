@@ -53,6 +53,22 @@ class ChatbotService
             'keywords' => ['disponible', 'disponibilidad', 'existencia', 'stock', 'agotado', 'hay'],
             'response' => 'Déjame revisar la disponibilidad.',
         ],
+        'whatsapp' => [
+    'keywords' => ['whatsapp', 'asesor', 'humano', 'persona', 'agente', 'hablar'],
+    'response' => '',
+],
+'ubicacion' => [
+    'keywords' => ['ubicacion', 'donde', 'direccion', 'estan', 'local', 'tienda'],
+    'response' => '',
+],
+'facturacion' => [
+    'keywords' => ['factura', 'facturacion', 'facturar', 'comprobante', 'fiscal', 'rfc'],
+    'response' => '',
+],
+'contacto' => [
+    'keywords' => ['contacto', 'telefono', 'llamar', 'correo', 'email', 'comunicar'],
+    'response' => '',
+],
     ];
 
     // -------------------------------------------------------------------------
@@ -109,7 +125,7 @@ class ChatbotService
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
-$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock'];
+$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto'];
 
 if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
     $intent = null;
@@ -319,6 +335,46 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
                 'products' => [],
             ];
         }
+
+                // --- WHATSAPP ---
+if ($intent === 'whatsapp') {
+    return [
+        'reply'    => "Te conectamos con un asesor de Dacanni por WhatsApp 💬\n\nPuedes escribirnos al:\n📱 +52 951 199 7304\n📱 +52 951 495 0948\n\nO haz clic en el enlace: https://wa.me/529511997304",
+        'intent'   => $intent,
+        'score'    => 1,
+        'products' => [],
+    ];
+}
+
+// --- UBICACIÓN ---
+if ($intent === 'ubicacion') {
+    return [
+        'reply'    => "📍 Nos encuentras en:\n\nReforma 300, Ruta Independencia, Centro, Oaxaca de Juárez, Oaxaca.\n\n🗺️ Ver en Google Maps: https://maps.app.goo.gl/dacanni",
+        'intent'   => $intent,
+        'score'    => 1,
+        'products' => [],
+    ];
+}
+
+// --- FACTURACIÓN ---
+if ($intent === 'facturacion') {
+    return [
+        'reply'    => "🧾 Para solicitar tu factura envía tus datos fiscales al siguiente correo:\n\n📧 facturaciondacanni@gmail.com\n\nIncluye tu RFC, nombre o razón social y el comprobante de compra.",
+        'intent'   => $intent,
+        'score'    => 1,
+        'products' => [],
+    ];
+}
+
+// --- CONTACTO ---
+if ($intent === 'contacto') {
+    return [
+        'reply'    => "📞 Puedes contactarnos por:\n\n📱 Teléfono: +52 951 495 0948\n📧 Correo: dacanni.info@gmail.com\n💬 WhatsApp: https://wa.me/529511997304",
+        'intent'   => $intent,
+        'score'    => 1,
+        'products' => [],
+    ];
+}
 
         if ($intent === 'stock' && $userChat->last_product) {
             $search = $this->cleanSearchText($userChat->last_message) ?: $userChat->last_product;

@@ -172,9 +172,18 @@ function dacAddMessage(role, text, products = [], chatId = null) {
   wrapper.className = `dac-msg ${role}`;
 
   const bubble = document.createElement('div');
-  bubble.className = 'dac-bubble-text';
-  bubble.textContent = text;
-  wrapper.appendChild(bubble);
+bubble.className = 'dac-bubble-text';
+
+// Convertir saltos de línea y links clickeables
+const formatted = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#E8197D;word-break:break-all;">$1</a>');
+
+bubble.innerHTML = formatted;
+wrapper.appendChild(bubble);
 
   // Botones de productos
   if (role === 'bot' && products.length > 0) {

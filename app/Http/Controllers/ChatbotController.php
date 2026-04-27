@@ -40,7 +40,7 @@ class ChatbotController extends Controller
             'session'  => $request->input('session'),
         ]);
     }
-    
+
         $rawMessage = $request->input('message');
 
         if (!$rawMessage) {
@@ -66,7 +66,7 @@ class ChatbotController extends Controller
             'user_chat_id' => $userChat->id,
             'message'      => $rawMessage,
             'reply'        => $result['reply'],
-            'intent'       => $result['intent'],
+            'intent'       => $result['intent'],    
         ]);
 
         return response()->json([
