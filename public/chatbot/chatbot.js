@@ -1,6 +1,6 @@
 const link = document.createElement("link");
 link.rel = "stylesheet";
-link.href = "https://chatbot-dacanni-production.up.railway.app/chatbot/styles.css";
+link.href = "https://chatbot-dacanni-production.up.railway.app/public/chatbot/chatbot.css";
 document.head.appendChild(link);
 // ── CONFIGURACIÓN ─────────────────────────────────────────────
 const DAC_API = 'https://chatbot-dacanni-production.up.railway.app/api/v1';
