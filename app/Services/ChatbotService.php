@@ -69,6 +69,10 @@ class ChatbotService
     'keywords' => ['contacto', 'telefono', 'llamar', 'correo', 'email', 'comunicar'],
     'response' => '',
 ],
+'redes' => [
+    'keywords' => ['redes', 'instagram', 'facebook', 'tiktok', 'x', 'twitter', 'siguelos', 'seguir'],
+    'response' => '',
+],
     ];
 
     // -------------------------------------------------------------------------
@@ -125,7 +129,7 @@ class ChatbotService
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
-$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto'];
+$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'redes'];
 
 if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
     $intent = null;
@@ -369,7 +373,12 @@ if ($intent === 'facturacion') {
 // --- CONTACTO ---
 if ($intent === 'contacto') {
     return [
-        'reply'    => "📞 Puedes contactarnos por:\n\n📱 Teléfono: +52 951 495 0948\n📧 Correo: dacanni.info@gmail.com\n💬 WhatsApp: https://wa.me/529511997304",
+        'reply'    =>  "📞 Puedes contactarnos por:\n\n" .
+                      "📱 Teléfono: +52 951 495 0948\n" .
+                      "📧 Correo: dacanni.info@gmail.com\n" .
+                      "💬 WhatsApp: https://wa.me/529514950948\n\n" .
+                      "📝 También puedes enviarnos un mensaje desde nuestro formulario:\n" .
+                      "https://dacanni.com/contacto/",
         'intent'   => $intent,
         'score'    => 1,
         'products' => [],
