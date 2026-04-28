@@ -339,7 +339,7 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
                 // --- WHATSAPP ---
 if ($intent === 'whatsapp') {
     return [
-        'reply'    => "Te conectamos con un asesor de Dacanni por WhatsApp 💬\n\nPuedes escribirnos al:\n📱 +52 951 199 7304\n📱 +52 951 495 0948\n\nO haz clic en el enlace: https://wa.me/529511997304",
+        'reply'    => "Te conectamos con un asesor de Dacanni por WhatsApp 💬\n\nPuedes escribirnos al:\n📱 +52 951 495 0948\n\nO haz clic en el enlace: https://wa.me/529514950948",
         'intent'   => $intent,
         'score'    => 1,
         'products' => [],
@@ -370,6 +370,20 @@ if ($intent === 'facturacion') {
 if ($intent === 'contacto') {
     return [
         'reply'    => "📞 Puedes contactarnos por:\n\n📱 Teléfono: +52 951 495 0948\n📧 Correo: dacanni.info@gmail.com\n💬 WhatsApp: https://wa.me/529511997304",
+        'intent'   => $intent,
+        'score'    => 1,
+        'products' => [],
+    ];
+}
+
+// --- REDES SOCIALES ---
+if ($intent === 'redes') {
+    return [
+        'reply'    => "📲 Síguenos en nuestras redes sociales:\n\n" .
+                      "📘 Facebook:\nhttps://www.facebook.com/Dacanni\n\n" .
+                      "📸 Instagram:\nhttps://www.instagram.com/dacanni/\n\n" .
+                      "🎵 TikTok:\nhttps://www.tiktok.com/@dacanni?is_from_webapp=1&sender_device=pc\n\n" .
+                      "🐦 X:\nhttps://x.com/dacanni",
         'intent'   => $intent,
         'score'    => 1,
         'products' => [],
