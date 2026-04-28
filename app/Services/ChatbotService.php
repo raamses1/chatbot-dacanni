@@ -349,7 +349,7 @@ if ($intent === 'whatsapp') {
 // --- UBICACIÓN ---
 if ($intent === 'ubicacion') {
     return [
-        'reply'    => "📍 Nos encuentras en:\n\nReforma 300, Ruta Independencia, Centro, Oaxaca de Juárez, Oaxaca.\n\n🗺️ Ver en Google Maps: https://maps.app.goo.gl/dacanni",
+        'reply'    => "📍 Nos encuentras en:\n\nReforma 300, Ruta Independencia, Centro, Oaxaca de Juárez, Oaxaca.\n\n🗺️ Ver en Google Maps: https://maps.app.goo.gl/zX4DHHsjRQFzJwCj8",
         'intent'   => $intent,
         'score'    => 1,
         'products' => [],
