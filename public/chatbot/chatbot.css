@@ -319,8 +319,11 @@
 
 /* ── RESPONSIVE ── */
 @media (max-width: 420px) {
+  :root {
+    --dac-offset-bottom: 90px;
+  }
   #dac-chat  { width: calc(100vw - 24px); right: 12px; bottom: 88px; }
-  #dac-bubble { right: 14px; bottom: 14px; }
+  #dac-bubble { right: 14px;}
 }
 
 /* ── CALIFICACIÓN ── */

@@ -131,6 +131,17 @@ class ChatbotService
     ];
         }
 
+        // Si detectó producto pero no hay intent claro, asumir stock
+        if ($detectedProduct && !$userChat->conversation_state) {
+            [$intentTemp, $scoreTemp] = $this->detectIntent($wordsOriginal);
+            
+            if ($scoreTemp < 2 && !in_array($intentTemp, ['precio', 'stock', 'talla'])) {
+                $userChat->last_intent = 'stock';
+                $userChat->save();
+                return $this->searchAndSuggest($detectedProduct, 'stock', $userChat);
+            }
+        }
+
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
@@ -378,7 +389,7 @@ if ($intent === 'facturacion') {
 // --- CONTACTO ---
 if ($intent === 'contacto') {
     return [
-        'reply'    => "📞 Puedes contactarnos por:\n\n📱 Teléfono: +52 951 495 0948\n📧 Correo: dacanni.info@gmail.com\n💬 WhatsApp: https://wa.me/529511997304",
+        'reply'    => "📞 Puedes contactarnos por:\n\n📱 Teléfono: +52 951 495 0948\n📧 Correo: dacanni.info@gmail.com\n💬 WhatsApp: https://wa.me/529514950948",
         'intent'   => $intent,
         'score'    => 1,
         'products' => [],
@@ -430,31 +441,37 @@ if ($intent === 'region') {
 // --- TALLA ---
 if ($intent === 'talla') {
     if ($userChat->last_product) {
-        $search  = $this->cleanSearchText($userChat->last_message) ?: $userChat->last_product;
-        $product = $this->findProductWoo($search);
+        // Buscar el producto completo con atributos
+        $search   = $userChat->last_product;
+        $products = $this->woo->getProducts($search);
 
-        if ($product && isset($product['attributes'])) {
-            $tallas = collect($product['attributes'])
-                ->where('name', 'Talla')
-                ->first();
+        if (!$this->woo->isError($products) && !empty($products)) {
+            $product = $this->bestMatch($products, $search);
 
-            if ($tallas && !empty($tallas['options'])) {
-                $listaTallas = implode(', ', $tallas['options']);
-                return [
-                    'reply'    => '📏 Las tallas disponibles de ' . $product['name'] . ' son: ' . $listaTallas,
-                    'intent'   => $intent,
-                    'score'    => 1,
-                    'products' => [],
-                ];
+            if ($product && isset($product['attributes'])) {
+                $tallas = collect($product['attributes'])
+                    ->first(fn($a) => str_contains(strtolower($a['name']), 'talla'));
+
+                if ($tallas && !empty($tallas['options'])) {
+                    $listaTallas = implode(', ', $tallas['options']);
+                    return [
+                        'reply'    => '📏 Las tallas disponibles de ' . $product['name'] . ' son: ' . $listaTallas,
+                        'intent'   => $intent,
+                        'score'    => 1,
+                        'products' => [],
+                    ];
+                }
             }
         }
+
         return [
-            'reply'    => 'No encontré información de tallas para ese producto.',
+            'reply'    => 'No encontré información de tallas para ese producto. Te recomendamos contactarnos por WhatsApp: https://wa.me/529511997304',
             'intent'   => $intent,
             'score'    => 0,
             'products' => [],
         ];
     }
+
     return [
         'reply'    => '¿De qué producto quieres saber las tallas disponibles?',
         'intent'   => $intent,

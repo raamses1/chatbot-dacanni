@@ -117,4 +117,23 @@ class WooCommerceService
         return [];
     }
 }
+
+public function getProductById(int $id): array
+{
+    try {
+        $response = $this->client->get("/wp-json/wc/v3/products/{$id}", [
+            'query' => [
+                'consumer_key'    => $this->key,
+                'consumer_secret' => $this->secret,
+            ],
+        ]);
+        return json_decode($response->getBody(), true) ?? [];
+    } catch (ConnectException $e) {
+        Log::error('[WooCommerce] Sin conexión (getProductById): ' . $e->getMessage());
+        return [];
+    } catch (RequestException $e) {
+        Log::error('[WooCommerce] Error HTTP (getProductById): ' . $e->getMessage());
+        return [];
+    }
+}
 }
