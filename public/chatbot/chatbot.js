@@ -54,7 +54,7 @@ async function dacToggle() {
   if (dacIsOpen) {
     const messages = document.getElementById('dac-messages');
 
-    // Solo cargar historial si no hay mensajes ya renderizados
+    // Solo cargar historial si no hay mensajes ya renderizados  2.0
     if (messages.childElementCount === 0) {
       if (dacSession) {
         await dacLoadHistory();
