@@ -28,9 +28,9 @@ class ChatbotService
 
     protected array $intents = [
         'saludo' => [
-            'keywords' => ['hola', 'buenas', 'hey', 'que', 'tal'],
-            'response' => '¡Hola! 👋 ¿En qué puedo ayudarte hoy?',
-        ],
+    'keywords' => ['hola', 'buenas', 'hey', 'buenos', 'dias', 'tardes', 'noches'],
+    'response' => '¡Hola! 👋 ¿En qué puedo ayudarte hoy?',
+],
         'envio' => [
             'keywords' => ['envio', 'envios', 'mandan', 'entrega', 'paqueteria'],
             'response' => 'Hacemos envíos a todo México 📦',
@@ -134,7 +134,7 @@ class ChatbotService
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
-$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'region'];
+$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'talla', 'region'];
 
 if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
     $intent = null;
