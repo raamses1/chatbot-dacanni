@@ -386,6 +386,40 @@ if ($intent === 'contacto') {
 }
 // --- REGIÓN ---
 if ($intent === 'region') {
+    // Detectar si el usuario menciona una región específica
+    $regiones = [
+        'istmo'          => 'Istmo de Tehuantepec',
+        'huautla'        => 'Huautla de Jiménez',
+        'antonino'       => 'San Antonino Castillo Velasco',
+        'bartolome'      => 'San Bartolomé Quialana',
+        'mixes'          => 'Mixes',
+        'costa'          => 'Costa de Oaxaca',
+        'coatlan'        => 'San Vicente Coatlán',
+        'tijaltepec'     => 'San Pablo Tijaltepec',
+        'huazolotitlan'  => 'Santa María Huazolotitlán',
+        'jalapa'         => 'San Felipe Jalapa de Díaz',
+        'tlahuitoltepec' => 'Santa María Tlahuitoltepec',
+        'pinotepa'       => 'Pinotepa de Don Luis',
+    ];
+
+    $mensajeNormalizado = $userChat->last_message ?? '';
+    $regionEncontrada   = null;
+    $nombreRegion       = null;
+
+    foreach ($regiones as $keyword => $nombre) {
+        if (str_contains($mensajeNormalizado, $keyword)) {
+            $regionEncontrada = $keyword;
+            $nombreRegion     = $nombre;
+            break;
+        }
+    }
+
+    // Si mencionó una región específica, buscar productos
+    if ($regionEncontrada) {
+        return $this->searchAndSuggest($regionEncontrada, 'stock', $userChat);
+    }
+
+    // Si no mencionó región específica, mostrar la lista
     return [
         'reply'    => "🗺️ En Dacanni trabajamos con artesanos de distintas comunidades de Oaxaca:\n\n• Istmo de Tehuantepec\n• San Antonino Castillo Velasco\n• San Bartolomé Quialana\n• Huautla de Jiménez\n• Mixes\n• Costa de Oaxaca\n• San Vicente Coatlán\n• San Pablo Tijaltepec\n• Santa María Huazolotitlán\n• San Felipe Jalapa de Díaz\n• Santa María Tlahuitoltepec\n• Pinotepa de Don Luis\n\n¿De qué región te gustaría ver productos?",
         'intent'   => $intent,
