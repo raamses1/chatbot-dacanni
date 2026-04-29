@@ -12,12 +12,13 @@
   --dac-text: #1a1a2e;
   --dac-shadow: 0 8px 32px rgba(27,58,140,0.18);
   --dac-radius: 20px;
+  --dac-offset-bottom: 100px;
 }
 
 /* ── BURBUJA ── */
 #dac-bubble {
   position: fixed;
-  bottom: 28px;
+  bottom: var(--dac-offset-bottom);
   right: 28px;
   width: 64px;
   height: 64px;
@@ -60,7 +61,7 @@
 /* ── VENTANA ── */
 #dac-chat {
   position: fixed;
-  bottom: 108px;
+  bottom: calc(var(--dac-offset-bottom) + 80px);
   right: 28px;
   width: 360px;
   max-height: 560px;

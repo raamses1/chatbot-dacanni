@@ -348,7 +348,7 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
                 // --- WHATSAPP ---
 if ($intent === 'whatsapp') {
     return [
-        'reply'    => "Te conectamos con un asesor de Dacanni por WhatsApp 💬\n\nPuedes escribirnos al:\n📱 +52 951 199 7304\n📱 +52 951 495 0948\n\nO haz clic en el enlace: https://wa.me/529511997304",
+        'reply'    => "Te conectamos con un asesor de Dacanni por WhatsApp 💬\n\nPuedes escribirnos al:\n📱 +52 951 495 0948\n\nO haz clic en el enlace: https://wa.me/529514950948",
         'intent'   => $intent,
         'score'    => 1,
         'products' => [],
