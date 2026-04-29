@@ -96,4 +96,25 @@ class WooCommerceService
         return $result['woo_error'] ?? null;
     }
 
+    public function getTags(): array
+{
+    try {
+        $response = $this->client->get('/wp-json/wc/v3/products/tags', [
+            'query' => [
+                'consumer_key'    => $this->key,
+                'consumer_secret' => $this->secret,
+                'per_page'        => 100,
+            ],
+        ]);
+
+        return json_decode($response->getBody(), true) ?? [];
+
+    } catch (ConnectException $e) {
+        Log::error('[WooCommerce] Sin conexión (getTags): ' . $e->getMessage());
+        return [];
+    } catch (RequestException $e) {
+        Log::error('[WooCommerce] Error HTTP (getTags): ' . $e->getMessage());
+        return [];
+    }
+}
 }

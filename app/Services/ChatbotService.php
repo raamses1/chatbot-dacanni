@@ -19,14 +19,12 @@ class ChatbotService
     }
 
     protected array $products = [
-        'blusa',
-        'guayabera',
-        'vestido',
-        'alebrije',
-        'top',
-        'corset',
-        'pantalon',
-    ];
+    'blusa', 'guayabera', 'vestido', 'alebrije', 'top', 'corset',
+    'pantalon', 'playera', 'falda', 'huipil', 'chamarra', 'blazer',
+    'conjunto', 'palazzo', 'maxivestido', 'maxi', 'aretes', 'pulsera',
+    'collar', 'brazalete', 'monedero', 'cartera', 'billetera',
+    'bota', 'botin', 'calzado', 'accesorio', 'barro', 'plato',
+];
 
     protected array $intents = [
         'saludo' => [
@@ -67,6 +65,17 @@ class ChatbotService
 ],
 'contacto' => [
     'keywords' => ['contacto', 'telefono', 'llamar', 'correo', 'email', 'comunicar'],
+    'response' => '',
+],
+'region' => [
+    'keywords' => ['istmo', 'huautla', 'antonino', 'bartolome', 'mixes', 
+                   'costa', 'region', 'comunidad', 'pueblo', 'origen',
+                   'coatlan', 'tijaltepec', 'huazolotitlan', 'jalapa',
+                   'tlahuitoltepec', 'pinotepa'],
+    'response' => '',
+],
+'talla' => [
+    'keywords' => ['talla', 'tallas', 'medida', 'medidas', 'talle', 'size', 'chico', 'mediano', 'grande'],
     'response' => '',
 ],
     ];
@@ -125,7 +134,7 @@ class ChatbotService
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
-$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto'];
+$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'region'];
 
 if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
     $intent = null;
@@ -375,6 +384,50 @@ if ($intent === 'contacto') {
         'products' => [],
     ];
 }
+// --- REGIÓN ---
+if ($intent === 'region') {
+    return [
+        'reply'    => "🗺️ En Dacanni trabajamos con artesanos de distintas comunidades de Oaxaca:\n\n• Istmo de Tehuantepec\n• San Antonino Castillo Velasco\n• San Bartolomé Quialana\n• Huautla de Jiménez\n• Mixes\n• Costa de Oaxaca\n• San Vicente Coatlán\n• San Pablo Tijaltepec\n• Santa María Huazolotitlán\n• San Felipe Jalapa de Díaz\n• Santa María Tlahuitoltepec\n• Pinotepa de Don Luis\n\n¿De qué región te gustaría ver productos?",
+        'intent'   => $intent,
+        'score'    => 1,
+        'products' => [],
+    ];
+}
+// --- TALLA ---
+if ($intent === 'talla') {
+    if ($userChat->last_product) {
+        $search  = $this->cleanSearchText($userChat->last_message) ?: $userChat->last_product;
+        $product = $this->findProductWoo($search);
+
+        if ($product && isset($product['attributes'])) {
+            $tallas = collect($product['attributes'])
+                ->where('name', 'Talla')
+                ->first();
+
+            if ($tallas && !empty($tallas['options'])) {
+                $listaTallas = implode(', ', $tallas['options']);
+                return [
+                    'reply'    => '📏 Las tallas disponibles de ' . $product['name'] . ' son: ' . $listaTallas,
+                    'intent'   => $intent,
+                    'score'    => 1,
+                    'products' => [],
+                ];
+            }
+        }
+        return [
+            'reply'    => 'No encontré información de tallas para ese producto.',
+            'intent'   => $intent,
+            'score'    => 0,
+            'products' => [],
+        ];
+    }
+    return [
+        'reply'    => '¿De qué producto quieres saber las tallas disponibles?',
+        'intent'   => $intent,
+        'score'    => 0,
+        'products' => [],
+    ];
+}
 
         if ($intent === 'stock' && $userChat->last_product) {
             $search = $this->cleanSearchText($userChat->last_message) ?: $userChat->last_product;
@@ -487,6 +540,49 @@ private function getArticle(string $name): string
     }
 
     return 'El';
+}
+
+private function findProductWoo(string $name): mixed
+{
+    $products = $this->woo->getProducts($name);
+
+    if ($this->woo->isError($products)) {
+        return $products;
+    }
+
+    if (empty($products)) {
+        return null;
+    }
+
+    return $this->bestMatch($products, $name);
+}
+
+private function bestMatch(array $products, string $search): mixed
+{
+    $search    = strtolower($search);
+    $best      = null;
+    $bestScore = 0;
+
+    foreach ($products as $product) {
+        if (!isset($product['name'])) {
+            continue;
+        }
+
+        $name = strtolower($product['name']);
+
+        if (str_contains($name, $search)) {
+            return $product;
+        }
+
+        similar_text($search, $name, $percent);
+
+        if ($percent > $bestScore) {
+            $bestScore = $percent;
+            $best      = $product;
+        }
+    }
+
+    return $best;
 }
     // -------------------------------------------------------------------------
     // PROCESAMIENTO DE TEXTO
