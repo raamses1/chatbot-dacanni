@@ -78,6 +78,14 @@ class ChatbotService
     'keywords' => ['talla', 'tallas', 'medida', 'medidas', 'talle', 'size', 'chico', 'mediano', 'grande'],
     'response' => '',
 ],
+'redes' => [
+    'keywords' => ['redes', 'instagram', 'facebook', 'tiktok', 'twitter', 'social', 'seguir', 'links', 'enlaces'],
+    'response' => '',
+],
+'compra' => [
+    'keywords' => ['comprar', 'compra', 'adquirir', 'quiero', 'llevar', 'pedido', 'pedir', 'ordenar'],
+    'response' => '',
+],
     ];
 
     // -------------------------------------------------------------------------
@@ -96,6 +104,23 @@ class ChatbotService
         $wordsClean    = explode(' ', $cleanMessage);
 
         $detectedProduct = $this->detectProduct($wordsClean);
+
+        // Detectar género para combinar con producto
+$genero = null;
+$generoPalabras = ['hombre', 'caballero', 'mujer', 'dama', 'nino', 'nina', 'infantil', 'bebe'];
+foreach ($generoPalabras as $g) {
+    foreach ($wordsClean as $word) {
+        if (str_contains($word, $g)) {
+            $genero = $g;
+            break 2;
+        }
+    }
+}
+
+// Si hay producto + género, combinar búsqueda
+if ($detectedProduct && $genero) {
+    $detectedProduct = $detectedProduct . ' ' . $genero;
+}
 
         if ($detectedProduct) {
             $userChat->last_product       = $detectedProduct;
@@ -145,7 +170,7 @@ class ChatbotService
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
-$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'talla', 'region'];
+$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'talla', 'region'.'compra', 'redes'];
 
 if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
     $intent = null;
@@ -241,6 +266,7 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
             'type'           => $p['type'] ?? 'simple',
             'stock_status'   => $p['stock_status'] ?? null,
             'stock_quantity' => $p['stock_quantity'] ?? null,
+            'image'          => $p['images'][0]['src'] ?? null,
         ])->values()->toArray();
 
         $userChat->suggested_products = json_encode($toSave);
@@ -427,8 +453,11 @@ if ($intent === 'region') {
 
     // Si mencionó una región específica, buscar productos
     if ($regionEncontrada) {
-        return $this->searchAndSuggest($regionEncontrada, 'stock', $userChat);
-    }
+    $searchTerm = $userChat->last_product 
+        ? $userChat->last_product . ' ' . $regionEncontrada 
+        : $regionEncontrada;
+    return $this->searchAndSuggest($searchTerm, 'stock', $userChat);
+}
 
     // Si no mencionó región específica, mostrar la lista
     return [
@@ -476,6 +505,29 @@ if ($intent === 'talla') {
         'reply'    => '¿De qué producto quieres saber las tallas disponibles?',
         'intent'   => $intent,
         'score'    => 0,
+        'products' => [],
+    ];
+}
+if ($intent === 'compra') {
+    return [
+        'reply'    => "¡Perfecto! 🛍️ Para realizar tu compra tienes estas opciones:\n\n🌐 Tienda en línea: https://dacanni.com/tienda\n💬 WhatsApp: https://wa.me/529514950948\n📍 Visítanos en Reforma 300, Centro, Oaxaca",
+        'intent'   => $intent,
+        'score'    => 1,
+        'products' => [],
+    ];
+}
+
+// --- CONTACTO ---
+if ($intent === 'contacto') {
+    return [
+        'reply'    => "📞 Puedes contactarnos por:\n\n" .
+                      "📱 Teléfono: +52 951 495 0948\n" .
+                      "📧 Correo: dacanni.info@gmail.com\n" .
+                      "💬 WhatsApp: https://wa.me/529514950948\n\n" .
+                      "📝 También puedes enviarnos un mensaje desde nuestro formulario:\n" .
+                      "https://dacanni.com/contacto/",
+        'intent'   => $intent,
+        'score'    => 1,
         'products' => [],
     ];
 }

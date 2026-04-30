@@ -198,6 +198,14 @@ wrapper.appendChild(bubble);
       const btn = document.createElement('button');
       btn.className = 'dac-product-btn';
 
+      // Imagen si existe
+    if (p.image) {
+        const img = document.createElement('img');
+        img.src = p.image;
+        img.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;';
+        btn.appendChild(img);
+    }
+
       const name = document.createElement('span');
       name.textContent = p.name;
       btn.appendChild(name);
