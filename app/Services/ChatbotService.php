@@ -170,7 +170,7 @@ if ($detectedProduct && $genero) {
         [$intent, $score] = $this->detectIntent($wordsOriginal);
 
 // Si el score es muy bajo, no confiar en la intención detectada
-$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'talla', 'region'.'compra', 'redes'];
+$intentasConUmbralBajo = ['envio', 'pago', 'horario', 'saludo', 'precio', 'stock', 'whatsapp', 'ubicacion', 'facturacion', 'contacto', 'talla', 'region','compra', 'redes'];
 
 if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
     $intent = null;
@@ -221,6 +221,7 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
 
         // Limpiar estado y guardar producto seleccionado
         $userChat->last_product       = $selected['name'];
+        $userChat->last_product_link  = $selected['permalink'] ?? null;
         $userChat->awaiting_selection = 0;
         $userChat->suggested_products = null;
         $userChat->save();
@@ -267,6 +268,7 @@ if ($score < 2 && !in_array($intent, $intentasConUmbralBajo)) {
             'stock_status'   => $p['stock_status'] ?? null,
             'stock_quantity' => $p['stock_quantity'] ?? null,
             'image'          => $p['images'][0]['src'] ?? null,
+            'permalink'      => $p['permalink'] ?? null,
         ])->values()->toArray();
 
         $userChat->suggested_products = json_encode($toSave);
@@ -509,8 +511,10 @@ if ($intent === 'talla') {
     ];
 }
 if ($intent === 'compra') {
+    $link   = $userChat->last_product_link ?? 'https://dacanni.com/tienda';
+    $nombre = $userChat->last_product ?? 'el producto';
     return [
-        'reply'    => "¡Perfecto! 🛍️ Para realizar tu compra tienes estas opciones:\n\n🌐 Tienda en línea: https://dacanni.com/tienda\n💬 WhatsApp: https://wa.me/529514950948\n📍 Visítanos en Reforma 300, Centro, Oaxaca",
+        'reply'    => "¡Perfecto! 🛍️ Puedes adquirir $nombre directamente aquí:\n\n🌐 $link\n\n💬 O escríbenos por WhatsApp: https://wa.me/529514950948",
         'intent'   => $intent,
         'score'    => 1,
         'products' => [],
@@ -518,7 +522,7 @@ if ($intent === 'compra') {
 }
 
 // --- CONTACTO ---
-if ($intent === 'contacto') {
+if ($intent === 'redes') {
     return [
         'reply'    => "📞 Puedes contactarnos por:\n\n" .
                       "📱 Teléfono: +52 951 495 0948\n" .

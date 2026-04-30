@@ -20,6 +20,7 @@ class UserChat extends Model
         'suggested_products',
         'awaiting_selection',
         'conversation_state',
+        'last_product_link',
     ];
 
     protected $casts = [
